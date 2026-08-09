@@ -151,15 +151,6 @@ Principaux préfixes de routes :
 - **Lint** : `ruff` (backend), `eslint` (frontend)
 - **CI** : GitHub Actions (`.github/workflows/ci.yml`) — lint + tests backend, lint + tests + build frontend sur chaque push/PR
 
-## Feuille de route
-
-Projet développé en 4 phases (détails dans les fichiers markdown historiques du repo) :
-
-1. **Phase 1** — Socle : Docker, Makefile, CI, organisation PDF (fusion, division, réorganisation)
-2. **Phase 2** — Modification & sécurité : rotation, filigrane, mot de passe, censure, formulaires
-3. **Phase 3** — Conversions : images, Office, dépendances lourdes (LibreOffice)
-4. **Phase 4** — IA locale (Ollama) et API tierces optionnelles (résumé, traduction, chat)
-
 ## Licence
 
 MIT — à confirmer par l'auteur.
