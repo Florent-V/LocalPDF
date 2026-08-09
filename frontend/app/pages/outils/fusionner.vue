@@ -1,0 +1,72 @@
+<script setup>
+import FileThumbnailList from '~/components/pdf/FileThumbnailList.vue'
+
+const { uploadForm } = useApi()
+
+const files = ref([])
+const loading = ref(false)
+
+async function onSubmit() {
+  if (files.value.length < 2) return
+  loading.value = true
+  try {
+    const form = new FormData()
+    files.value.forEach(f => form.append('files', f))
+    const blob = await uploadForm('/api/v1/organize/merge', form)
+    downloadBlob(blob, 'merged.pdf')
+  } catch (e) {
+    alert('Erreur lors de la fusion : ' + (e?.message || 'inconnue'))
+  } finally {
+    loading.value = false
+  }
+}
+</script>
+
+<template>
+  <div>
+    <h1 class="mb-2 text-2xl font-bold">
+      Fusionner des PDF
+    </h1>
+    <p class="mb-6 text-(--ui-text-muted)">
+      Assemblez plusieurs fichiers PDF dans l'ordre souhaité.
+    </p>
+
+    <FileDropzone
+      accept=".pdf"
+      multiple
+      @files-selected="files = $event"
+    />
+
+    <template v-if="files.length">
+      <p class="mt-4 text-sm text-(--ui-text-muted)">
+        Glissez-déposez les fichiers pour changer l'ordre de fusion.
+      </p>
+
+      <UButton
+        class="mt-4"
+        size="lg"
+        :loading="loading"
+        :disabled="files.length < 2"
+        @click="onSubmit"
+      >
+        Fusionner
+      </UButton>
+
+      <FileThumbnailList
+        class="mt-4"
+        :files="files"
+        @update:files="files = $event"
+      />
+
+      <UButton
+        class="mt-6"
+        size="lg"
+        :loading="loading"
+        :disabled="files.length < 2"
+        @click="onSubmit"
+      >
+        Fusionner
+      </UButton>
+    </template>
+  </div>
+</template>

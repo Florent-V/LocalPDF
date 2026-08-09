@@ -1,0 +1,13 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+@theme static {
+  --font-sans: 'Public Sans', sans-serif;
+}
+
+@layer base {
+  ::selection {
+    background-color: var(--ui-primary);
+    color: var(--ui-bg);
+  }
+}
