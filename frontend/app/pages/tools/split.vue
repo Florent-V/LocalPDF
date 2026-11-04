@@ -1,14 +1,13 @@
 <script setup>
 import PdfPageGrid from '~/components/pdf/PdfPageGrid.vue'
 
-const { uploadForm } = useApi()
+const { loading, submit } = useToolSubmit()
 
 const file = ref(null)
 const start = ref(1)
 const end = ref(null)
 const mode = ref('range')
 const everyN = ref(1)
-const loading = ref(false)
 const selectedPages = ref([])
 const pageCount = ref(0)
 
@@ -31,46 +30,27 @@ function onPagesSelected(next) {
 }
 
 const everyGroups = computed(() => {
-  if (mode.value !== 'every' || !pageCount.value) return null
-  const n = Math.max(1, Math.floor(everyN.value) || 1)
-  const groups = {}
-  for (let page = 1; page <= pageCount.value; page++) {
-    groups[page] = Math.floor((page - 1) / n)
-  }
-  return groups
+  if (mode.value !== 'every') return null
+  return computeEveryGroups(pageCount.value, everyN.value)
 })
 
 const everySummary = computed(() => {
-  if (mode.value !== 'every' || !pageCount.value) return ''
-  const n = Math.max(1, Math.floor(everyN.value) || 1)
-  const fileCount = Math.ceil(pageCount.value / n)
-  if (n === 1) return `${fileCount} fichiers, une page chacun.`
-  const lastSize = pageCount.value - n * (fileCount - 1)
-  return lastSize === n
-    ? `${fileCount} fichiers de ${n} pages chacun.`
-    : `${fileCount} fichiers : ${fileCount - 1} de ${n} pages, 1 dernier de ${lastSize} page(s).`
+  if (mode.value !== 'every') return ''
+  return computeEverySummary(pageCount.value, everyN.value)
 })
 
 async function onSubmit() {
   if (!file.value) return
-  loading.value = true
-  try {
-    const form = new FormData()
-    form.append('file', file.value)
-    if (mode.value === 'range') {
-      form.append('start', String(start.value || 1))
-      if (end.value) form.append('end', String(end.value))
-    } else {
-      form.append('every_n', String(Math.max(1, Math.floor(everyN.value) || 1)))
-    }
-    const blob = await uploadForm('/api/v1/organize/split', form)
-    const extension = mode.value === 'range' ? 'pdf' : 'zip'
-    downloadBlob(blob, `split.${extension}`)
-  } catch (e) {
-    alert('Erreur lors de la division : ' + (e?.message || 'inconnue'))
-  } finally {
-    loading.value = false
+  const form = new FormData()
+  form.append('file', file.value)
+  if (mode.value === 'range') {
+    form.append('start', String(start.value || 1))
+    if (end.value) form.append('end', String(end.value))
+  } else {
+    form.append('every_n', String(Math.max(1, Math.floor(everyN.value) || 1)))
   }
+  const extension = mode.value === 'range' ? 'pdf' : 'zip'
+  await submit('/api/v1/organize/split', form, `split.${extension}`, 'Erreur lors de la division')
 }
 </script>
 

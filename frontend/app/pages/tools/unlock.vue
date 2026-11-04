@@ -1,24 +1,15 @@
 <script setup>
-const { uploadForm } = useApi()
+const { loading, submit } = useToolSubmit()
 
 const file = ref(null)
 const password = ref('')
-const loading = ref(false)
 
 async function onSubmit() {
   if (!file.value || !password.value) return
-  loading.value = true
-  try {
-    const form = new FormData()
-    form.append('file', file.value)
-    form.append('password', password.value)
-    const blob = await uploadForm('/api/v1/security/unlock', form)
-    downloadBlob(blob, 'unlocked.pdf')
-  } catch (e) {
-    alert('Erreur lors du déverrouillage : ' + (e?.message || 'inconnue'))
-  } finally {
-    loading.value = false
-  }
+  const form = new FormData()
+  form.append('file', file.value)
+  form.append('password', password.value)
+  await submit('/api/v1/security/unlock', form, 'unlocked.pdf', 'Erreur lors du déverrouillage')
 }
 </script>
 

@@ -1,48 +1,26 @@
 <script setup>
 import PdfPageGrid from '~/components/pdf/PdfPageGrid.vue'
 
-const { baseURL } = useApi()
-const { getConfig } = useAiConfig()
+const { job, loading, create, requireConfig, call } = useAiJob()
 
 const file = ref(null)
-const job = ref(null)
 const question = ref('')
 const messages = ref([])
-const loading = ref(false)
 
 async function onUpload() {
   if (!file.value) return
-  const form = new FormData()
-  form.append('file', file.value)
-  job.value = await $fetch(`${baseURL}/api/v1/ai/jobs`, {
-    method: 'POST',
-    body: form
-  })
+  await create(file.value)
 }
 
 async function sendMessage() {
   if (!job.value || !question.value.trim()) return
-  const config = getConfig()
-  if (!config) {
-    alert('Veuillez configurer un provider IA dans Paramètres.')
-    return
-  }
-  loading.value = true
+  const config = requireConfig()
+  if (!config) return
   const q = question.value
   messages.value.push({ role: 'user', content: q })
   question.value = ''
-  try {
-    const response = await $fetch(`${baseURL}/api/v1/ai/jobs/${job.value.job_id}/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: { config, question: q }
-    })
-    messages.value.push({ role: 'assistant', content: response })
-  } catch (e) {
-    alert('Erreur IA : ' + (e?.message || 'inconnue'))
-  } finally {
-    loading.value = false
-  }
+  const response = await call('chat', config, { question: q })
+  if (response !== null) messages.value.push({ role: 'assistant', content: response })
 }
 </script>
 
@@ -68,7 +46,7 @@ async function sendMessage() {
     />
 
     <div
-      v-else
+      v-if="job"
       class="flex flex-col gap-2 rounded-lg border border-(--ui-border) p-4"
     >
       <div

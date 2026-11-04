@@ -5,14 +5,6 @@ const route = useRoute()
 watch(() => route.fullPath, () => {
   open.value = false
 })
-
-const colorClasses = {
-  indigo: 'text-indigo-500 bg-indigo-500/10',
-  amber: 'text-amber-500 bg-amber-500/10',
-  emerald: 'text-emerald-500 bg-emerald-500/10',
-  sky: 'text-sky-500 bg-sky-500/10',
-  fuchsia: 'text-fuchsia-500 bg-fuchsia-500/10'
-}
 </script>
 
 <template>
@@ -30,7 +22,7 @@ const colorClasses = {
           <div class="flex items-center gap-2 px-1 text-sm font-semibold text-(--ui-text-muted)">
             <span
               class="flex h-6 w-6 items-center justify-center rounded-md"
-              :class="colorClasses[category.color]"
+              :class="TOOL_COLOR_BADGE[category.color]"
             >
               <UIcon
                 :name="category.icon"

@@ -1,10 +1,9 @@
 <script setup>
-const { uploadForm } = useApi()
+const { loading, submit } = useToolSubmit()
 
 const mode = ref('file')
 const file = ref(null)
 const text = ref('')
-const loading = ref(false)
 
 const canSubmit = computed(() => {
   return mode.value === 'file' ? !!file.value : text.value.trim().length > 0
@@ -12,21 +11,13 @@ const canSubmit = computed(() => {
 
 async function onSubmit() {
   if (!canSubmit.value) return
-  loading.value = true
-  try {
-    const form = new FormData()
-    if (mode.value === 'file') {
-      form.append('file', file.value)
-    } else {
-      form.append('text', text.value)
-    }
-    const blob = await uploadForm('/api/v1/convert/markdown-to-pdf', form)
-    downloadBlob(blob, 'document.pdf')
-  } catch (e) {
-    alert('Erreur lors de la conversion : ' + (e?.message || 'inconnue'))
-  } finally {
-    loading.value = false
+  const form = new FormData()
+  if (mode.value === 'file') {
+    form.append('file', file.value)
+  } else {
+    form.append('text', text.value)
   }
+  await submit('/api/v1/convert/markdown-to-pdf', form, 'document.pdf', 'Erreur lors de la conversion')
 }
 </script>
 

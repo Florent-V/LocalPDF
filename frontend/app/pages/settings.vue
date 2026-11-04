@@ -1,4 +1,6 @@
 <script setup>
+const toast = useToast()
+
 const provider = ref('ollama')
 const baseUrl = ref('http://localhost:11434')
 const apiKey = ref('')
@@ -7,7 +9,8 @@ const model = ref('llama3.1:8b')
 const presets = {
   ollama: { baseUrl: 'http://localhost:11434', model: 'llama3.1:8b' },
   openai: { baseUrl: '', model: 'gpt-4o-mini' },
-  anthropic: { baseUrl: '', model: 'claude-3-5-sonnet-20241022' }
+  anthropic: { baseUrl: '', model: 'claude-3-5-sonnet-20241022' },
+  openrouter: { baseUrl: '', model: 'openai/gpt-4o-mini' }
 }
 
 onMounted(() => {
@@ -36,7 +39,7 @@ function saveConfig() {
     model: model.value
   }
   localStorage.setItem('localpdf-ai-config', JSON.stringify(config))
-  alert('Configuration enregistrée dans le navigateur.')
+  toast.add({ title: 'Configuration enregistrée', description: 'Vos paramètres IA sont enregistrés dans le navigateur.', color: 'success' })
 }
 </script>
 
@@ -53,7 +56,7 @@ function saveConfig() {
       <UFormField label="Provider">
         <USelect
           v-model="provider"
-          :items="[{ label: 'Ollama (local)', value: 'ollama' }, { label: 'OpenAI', value: 'openai' }, { label: 'Anthropic', value: 'anthropic' }]"
+          :items="[{ label: 'Ollama (local)', value: 'ollama' }, { label: 'OpenAI', value: 'openai' }, { label: 'Anthropic', value: 'anthropic' }, { label: 'OpenRouter', value: 'openrouter' }]"
           @update:model-value="applyPreset"
         />
       </UFormField>
@@ -75,7 +78,20 @@ function saveConfig() {
         />
       </UFormField>
 
-      <UFormField label="Modèle">
+      <UFormField
+        v-if="provider === 'openrouter'"
+        label="URL de base (optionnel)"
+      >
+        <UInput
+          v-model="baseUrl"
+          placeholder="https://openrouter.ai/api/v1"
+        />
+      </UFormField>
+
+      <UFormField
+        label="Modèle"
+        :help="provider === 'openrouter' ? 'Voir openrouter.ai/models pour la liste des modèles disponibles (ex: openai/gpt-4o-mini, anthropic/claude-3-5-sonnet, meta-llama/llama-3.1-70b-instruct)' : undefined"
+      >
         <UInput v-model="model" />
       </UFormField>
 

@@ -12,7 +12,7 @@ const props = defineProps({
   groupLabel: { type: String, default: '' }
 })
 
-const emit = defineEmits(['select', 'remove', 'rotate', 'dragstart', 'dragover', 'drop', 'dragend'])
+const emit = defineEmits(['select', 'remove', 'rotate', 'dragstart', 'drop', 'dragend'])
 
 const GROUP_COLORS = [
   'bg-blue-500',
@@ -38,7 +38,7 @@ const groupColor = computed(() => props.groupIndex === null
     :draggable="draggable"
     @click="selectable && emit('select')"
     @dragstart="emit('dragstart', $event)"
-    @dragover.prevent="emit('dragover', $event)"
+    @dragover.prevent
     @drop.prevent="emit('drop', $event)"
     @dragend="emit('dragend', $event)"
   >

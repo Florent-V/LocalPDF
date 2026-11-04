@@ -1,5 +1,6 @@
 <script setup>
 const mobileNavOpen = ref(false)
+const { user, logout } = useUser()
 </script>
 
 <template>
@@ -28,13 +29,24 @@ const mobileNavOpen = ref(false)
 
       <div class="flex items-center gap-1">
         <UButton
-          to="/parametres"
+          to="/settings"
           icon="i-lucide-settings"
           color="neutral"
           variant="ghost"
           aria-label="Paramètres"
         />
         <UColorModeButton />
+        <span
+          v-if="user"
+          class="hidden sm:inline ml-2 text-sm text-(--ui-text-muted)"
+        >{{ user.name || user.email }}</span>
+        <UButton
+          icon="i-lucide-log-out"
+          color="neutral"
+          variant="ghost"
+          aria-label="Se déconnecter"
+          @click="logout"
+        />
       </div>
     </div>
 

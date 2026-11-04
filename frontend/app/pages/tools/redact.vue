@@ -1,60 +1,29 @@
 <script setup>
 import PdfRedactCanvas from '~/components/pdf/PdfRedactCanvas.vue'
 
-const { baseURL, getFile } = useApi()
+const { job, loading, create, apply, abandon } = useJobResource('/api/v1/security/redact')
 
 const file = ref(null)
-const job = ref(null)
-const loading = ref(false)
 const mode = ref('manual')
 const searchTerms = ref('')
 const rectangles = ref([])
 
 async function onUpload() {
   if (!file.value) return
-  loading.value = true
-  try {
-    const form = new FormData()
-    form.append('file', file.value)
-    job.value = await $fetch(`${baseURL}/api/v1/security/redact/jobs`, {
-      method: 'POST',
-      body: form
-    })
-    rectangles.value = []
-  } catch (e) {
-    alert('Erreur lors de la création du job : ' + (e?.message || 'inconnue'))
-  } finally {
-    loading.value = false
-  }
+  const result = await create(file.value)
+  if (result) rectangles.value = []
 }
 
 async function onApply() {
-  if (!job.value) return
-  loading.value = true
-  try {
-    const body = mode.value === 'manual'
-      ? { rectangles: rectangles.value }
-      : { terms: searchTerms.value.split(',').map(t => t.trim()).filter(Boolean) }
-    await $fetch(`${baseURL}/api/v1/security/redact/jobs/${job.value.job_id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body
-    })
-    const blob = await getFile(`/api/v1/security/redact/jobs/${job.value.job_id}/download`)
-    downloadBlob(blob, 'redacted.pdf')
-    job.value = null
-    rectangles.value = []
-  } catch (e) {
-    alert('Erreur lors de la censure : ' + (e?.message || 'inconnue'))
-  } finally {
-    loading.value = false
-  }
+  const body = mode.value === 'manual'
+    ? { rectangles: rectangles.value }
+    : { terms: searchTerms.value.split(',').map(t => t.trim()).filter(Boolean) }
+  const ok = await apply(body, 'redacted.pdf', 'Erreur lors de la censure')
+  if (ok) rectangles.value = []
 }
 
 async function onAbandon() {
-  if (!job.value) return
-  await $fetch(`${baseURL}/api/v1/security/redact/jobs/${job.value.job_id}`, { method: 'DELETE' })
-  job.value = null
+  await abandon()
   rectangles.value = []
 }
 </script>

@@ -1,28 +1,19 @@
 <script setup>
 import PdfPageGrid from '~/components/pdf/PdfPageGrid.vue'
 
-const { uploadForm } = useApi()
+const { loading, submit } = useToolSubmit()
 
 const file = ref(null)
 const dpi = ref(150)
 const fmt = ref('png')
-const loading = ref(false)
 
 async function onSubmit() {
   if (!file.value) return
-  loading.value = true
-  try {
-    const form = new FormData()
-    form.append('file', file.value)
-    form.append('dpi', String(dpi.value))
-    form.append('fmt', fmt.value)
-    const blob = await uploadForm('/api/v1/convert/pdf-to-images', form)
-    downloadBlob(blob, 'images.zip')
-  } catch (e) {
-    alert('Erreur lors de l\'extraction : ' + (e?.message || 'inconnue'))
-  } finally {
-    loading.value = false
-  }
+  const form = new FormData()
+  form.append('file', file.value)
+  form.append('dpi', String(dpi.value))
+  form.append('fmt', fmt.value)
+  await submit('/api/v1/convert/pdf-to-images', form, 'images.zip', 'Erreur lors de l\'extraction')
 }
 </script>
 

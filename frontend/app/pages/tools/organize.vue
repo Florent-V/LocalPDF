@@ -1,12 +1,9 @@
 <script setup>
 import PdfPageGrid from '~/components/pdf/PdfPageGrid.vue'
 
-const { baseURL } = useApi()
-const { getFile } = useApi()
+const { job, loading, create, apply, abandon } = useJobResource('/api/v1/organize')
 
 const file = ref(null)
-const loading = ref(false)
-const job = ref(null)
 const order = ref([])
 const pageAngles = ref({})
 
@@ -36,51 +33,28 @@ function rotateAll(delta) {
 
 async function onUpload() {
   if (!file.value) return
-  loading.value = true
-  try {
-    const form = new FormData()
-    form.append('file', file.value)
-    job.value = await $fetch(`${baseURL}/api/v1/organize/jobs`, {
-      method: 'POST',
-      body: form
-    })
-  } catch (e) {
-    alert('Erreur lors de la création du job : ' + (e?.message || 'inconnue'))
-  } finally {
-    loading.value = false
-  }
+  await create(file.value)
 }
 
 async function onApply() {
-  if (!job.value) return
-  loading.value = true
-  try {
-    const nonZero = Object.fromEntries(
-      Object.entries(pageAngles.value)
-        .map(([p, a]) => [Number(p), a])
-        .filter(([, a]) => a % 360 !== 0)
-    )
-    await $fetch(`${baseURL}/api/v1/organize/jobs/${job.value.job_id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: { new_order: order.value, rotations: nonZero }
-    })
-    const blob = await getFile(`/api/v1/organize/jobs/${job.value.job_id}/download`)
-    downloadBlob(blob, 'organized.pdf')
-    job.value = null
+  const nonZero = Object.fromEntries(
+    Object.entries(pageAngles.value)
+      .map(([p, a]) => [Number(p), a])
+      .filter(([, a]) => a % 360 !== 0)
+  )
+  const ok = await apply(
+    { new_order: order.value, rotations: nonZero },
+    'organized.pdf',
+    'Erreur lors de l\'organisation'
+  )
+  if (ok) {
     order.value = []
     pageAngles.value = {}
-  } catch (e) {
-    alert('Erreur lors de l\'organisation : ' + (e?.message || 'inconnue'))
-  } finally {
-    loading.value = false
   }
 }
 
 async function onAbandon() {
-  if (!job.value) return
-  await $fetch(`${baseURL}/api/v1/organize/jobs/${job.value.job_id}`, { method: 'DELETE' })
-  job.value = null
+  await abandon()
   order.value = []
   pageAngles.value = {}
 }

@@ -1,0 +1,35 @@
+# Inside the stack, plain HTTP: the host's Caddy terminates TLS in front.
+{
+	auto_https off
+	admin off
+}
+
+:80 {
+	encode zstd gzip
+
+	handle /auth/* {
+		reverse_proxy {$API_UPSTREAM:api:8000}
+	}
+
+	handle /api/* {
+		request_body {
+			max_size {$MAX_UPLOAD_MB:200}MB
+		}
+		reverse_proxy {$API_UPSTREAM:api:8000} {
+			flush_interval -1
+		}
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		-Server
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; worker-src 'self' blob:; connect-src 'self' blob:; frame-ancestors 'none'"
+	}
+}

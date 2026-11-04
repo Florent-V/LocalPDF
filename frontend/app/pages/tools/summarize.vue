@@ -1,52 +1,23 @@
 <script setup>
 import PdfPageGrid from '~/components/pdf/PdfPageGrid.vue'
 
-const { baseURL } = useApi()
-const { getConfig } = useAiConfig()
+const { job, loading, create, requireConfig, call } = useAiJob()
 
 const file = ref(null)
-const job = ref(null)
 const language = ref('français')
-const loading = ref(false)
 const result = ref('')
 
 async function onUpload() {
   if (!file.value) return
-  loading.value = true
-  try {
-    const form = new FormData()
-    form.append('file', file.value)
-    job.value = await $fetch(`${baseURL}/api/v1/ai/jobs`, {
-      method: 'POST',
-      body: form
-    })
-    await onSummarize()
-  } catch (e) {
-    alert('Erreur : ' + (e?.message || 'inconnue'))
-  } finally {
-    loading.value = false
-  }
+  const created = await create(file.value)
+  if (created) await onSummarize()
 }
 
 async function onSummarize() {
-  const config = getConfig()
-  if (!config) {
-    alert('Veuillez configurer un provider IA dans Paramètres.')
-    return
-  }
-  loading.value = true
-  try {
-    const response = await $fetch(`${baseURL}/api/v1/ai/jobs/${job.value.job_id}/summarize`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: { config, language: language.value }
-    })
-    result.value = response
-  } catch (e) {
-    alert('Erreur IA : ' + (e?.message || 'inconnue'))
-  } finally {
-    loading.value = false
-  }
+  const config = requireConfig()
+  if (!config) return
+  const response = await call('summarize', config, { language: language.value })
+  if (response !== null) result.value = response
 }
 </script>
 

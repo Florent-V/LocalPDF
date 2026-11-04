@@ -1,24 +1,15 @@
 <script setup>
 import FileThumbnailList from '~/components/pdf/FileThumbnailList.vue'
 
-const { uploadForm } = useApi()
+const { loading, submit } = useToolSubmit()
 
 const files = ref([])
-const loading = ref(false)
 
 async function onSubmit() {
   if (files.value.length < 2) return
-  loading.value = true
-  try {
-    const form = new FormData()
-    files.value.forEach(f => form.append('files', f))
-    const blob = await uploadForm('/api/v1/organize/merge', form)
-    downloadBlob(blob, 'merged.pdf')
-  } catch (e) {
-    alert('Erreur lors de la fusion : ' + (e?.message || 'inconnue'))
-  } finally {
-    loading.value = false
-  }
+  const form = new FormData()
+  files.value.forEach(f => form.append('files', f))
+  await submit('/api/v1/organize/merge', form, 'merged.pdf', 'Erreur lors de la fusion')
 }
 </script>
 
@@ -34,6 +25,7 @@ async function onSubmit() {
     <FileDropzone
       accept=".pdf"
       multiple
+      :files="files"
       @files-selected="files = $event"
     />
 
@@ -41,16 +33,6 @@ async function onSubmit() {
       <p class="mt-4 text-sm text-(--ui-text-muted)">
         Glissez-déposez les fichiers pour changer l'ordre de fusion.
       </p>
-
-      <UButton
-        class="mt-4"
-        size="lg"
-        :loading="loading"
-        :disabled="files.length < 2"
-        @click="onSubmit"
-      >
-        Fusionner
-      </UButton>
 
       <FileThumbnailList
         class="mt-4"

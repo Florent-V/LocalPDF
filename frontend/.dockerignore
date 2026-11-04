@@ -1,0 +1,8 @@
+node_modules
+.nuxt
+.output
+.data
+.nitro
+.pnpm-store
+.git
+.env

@@ -1,30 +1,21 @@
 <script setup>
-const { uploadForm } = useApi()
+const { loading, submit } = useToolSubmit()
 
 const file = ref(null)
 const userPassword = ref('')
 const ownerPassword = ref('')
 const allowPrinting = ref(true)
 const allowCopying = ref(false)
-const loading = ref(false)
 
 async function onSubmit() {
   if (!file.value || !userPassword.value) return
-  loading.value = true
-  try {
-    const form = new FormData()
-    form.append('file', file.value)
-    form.append('user_password', userPassword.value)
-    if (ownerPassword.value) form.append('owner_password', ownerPassword.value)
-    form.append('allow_printing', String(allowPrinting.value))
-    form.append('allow_copying', String(allowCopying.value))
-    const blob = await uploadForm('/api/v1/security/protect', form)
-    downloadBlob(blob, 'protected.pdf')
-  } catch (e) {
-    alert('Erreur lors de la protection : ' + (e?.message || 'inconnue'))
-  } finally {
-    loading.value = false
-  }
+  const form = new FormData()
+  form.append('file', file.value)
+  form.append('user_password', userPassword.value)
+  if (ownerPassword.value) form.append('owner_password', ownerPassword.value)
+  form.append('allow_printing', String(allowPrinting.value))
+  form.append('allow_copying', String(allowCopying.value))
+  await submit('/api/v1/security/protect', form, 'protected.pdf', 'Erreur lors de la protection')
 }
 </script>
 

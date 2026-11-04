@@ -1,34 +1,25 @@
 <script setup>
 import PdfPageGrid from '~/components/pdf/PdfPageGrid.vue'
 
-const { uploadForm } = useApi()
+const { loading, submit } = useToolSubmit()
 
 const file = ref(null)
-const loading = ref(false)
 
 async function onSubmit() {
   if (!file.value) return
-  loading.value = true
-  try {
-    const form = new FormData()
-    form.append('file', file.value)
-    const blob = await uploadForm('/api/v1/ai/pdf-to-markdown', form)
-    downloadBlob(blob, 'document.md')
-  } catch (e) {
-    alert('Erreur lors de la conversion : ' + (e?.message || 'inconnue'))
-  } finally {
-    loading.value = false
-  }
+  const form = new FormData()
+  form.append('file', file.value)
+  await submit('/api/v1/convert/pdf-to-word', form, 'document.docx', 'Erreur lors de la conversion')
 }
 </script>
 
 <template>
   <div>
     <h1 class="mb-2 text-2xl font-bold">
-      PDF vers Markdown
+      PDF vers Word
     </h1>
     <p class="mb-6 text-(--ui-text-muted)">
-      Extrayez le contenu structuré d'un PDF en Markdown.
+      Convertissez un PDF en document Word éditable.
     </p>
 
     <FileDropzone
@@ -49,7 +40,7 @@ async function onSubmit() {
       :disabled="!file"
       @click="onSubmit"
     >
-      Convertir en Markdown
+      Convertir en Word
     </UButton>
   </div>
 </template>

@@ -15,7 +15,7 @@ const canvasEl = ref(null)
 const loading = ref(false)
 const previewScale = ref(1)
 const previewWidth = ref(0)
-const imageObjectUrl = ref(null)
+const imageObjectUrl = useObjectUrl(computed(() => props.image))
 
 let resizeObserver = null
 
@@ -45,13 +45,7 @@ onMounted(() => {
   if (canvasEl.value) resizeObserver.observe(canvasEl.value)
 })
 
-watch(() => props.image, (image) => {
-  if (imageObjectUrl.value) URL.revokeObjectURL(imageObjectUrl.value)
-  imageObjectUrl.value = image ? URL.createObjectURL(image) : null
-}, { immediate: true })
-
 onBeforeUnmount(() => {
-  if (imageObjectUrl.value) URL.revokeObjectURL(imageObjectUrl.value)
   resizeObserver?.disconnect()
 })
 
@@ -61,13 +55,6 @@ const positionClass = computed(() => ({
   bottom: 'items-end justify-center',
   diagonal: 'items-center justify-center'
 }[props.position] || 'items-center justify-center'))
-
-function measureTextWidth(text) {
-  const canvas = document.createElement('canvas')
-  const ctx = canvas.getContext('2d')
-  ctx.font = 'bold 100px sans-serif'
-  return ctx.measureText(text).width
-}
 
 const DIAGONAL_SCALE = 1.25
 

@@ -2,7 +2,7 @@
 import PdfPageGrid from '~/components/pdf/PdfPageGrid.vue'
 import WatermarkPreview from '~/components/pdf/WatermarkPreview.vue'
 
-const { uploadForm } = useApi()
+const { loading, submit } = useToolSubmit()
 
 const file = ref(null)
 const mode = ref('text')
@@ -13,32 +13,23 @@ const opacity = ref(0.3)
 const width = ref(100)
 const allPages = ref(true)
 const selectedPages = ref([])
-const loading = ref(false)
 
 async function onSubmit() {
   if (!file.value) return
-  loading.value = true
-  try {
-    const form = new FormData()
-    form.append('file', file.value)
-    if (mode.value === 'text') {
-      form.append('text', text.value)
-    } else if (image.value) {
-      form.append('image', image.value)
-      form.append('width', String(width.value))
-    }
-    form.append('position', position.value)
-    form.append('opacity', String(opacity.value))
-    if (!allPages.value && selectedPages.value.length) {
-      form.append('pages', selectedPages.value.join(','))
-    }
-    const blob = await uploadForm('/api/v1/modify/watermark', form)
-    downloadBlob(blob, 'watermarked.pdf')
-  } catch (e) {
-    alert('Erreur lors de l\'ajout du filigrane : ' + (e?.message || 'inconnue'))
-  } finally {
-    loading.value = false
+  const form = new FormData()
+  form.append('file', file.value)
+  if (mode.value === 'text') {
+    form.append('text', text.value)
+  } else if (image.value) {
+    form.append('image', image.value)
+    form.append('width', String(width.value))
   }
+  form.append('position', position.value)
+  form.append('opacity', String(opacity.value))
+  if (!allPages.value && selectedPages.value.length) {
+    form.append('pages', selectedPages.value.join(','))
+  }
+  await submit('/api/v1/modify/watermark', form, 'watermarked.pdf', 'Erreur lors de l\'ajout du filigrane')
 }
 </script>
 
@@ -109,7 +100,7 @@ async function onSubmit() {
             { label: 'Haut', value: 'top' },
             { label: 'Centre', value: 'center' },
             { label: 'Bas', value: 'bottom' },
-            { label: 'Diagonale', value: 'diagonal' },
+            { label: 'Diagonale', value: 'diagonal' }
           ]"
         />
       </UFormField>

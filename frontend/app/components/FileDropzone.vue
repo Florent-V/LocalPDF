@@ -2,26 +2,39 @@
 const props = defineProps({
   accept: { type: String, default: '.pdf' },
   multiple: { type: Boolean, default: false },
-  maxSizeMb: { type: Number, default: 200 }
+  maxSizeMb: { type: Number, default: 200 },
+  // Optional: lets a parent that edits the list downstream (e.g. via
+  // FileThumbnailList's remove/reorder) keep this component's own copy in
+  // sync. Pages that only ever replace the whole selection don't need it.
+  files: { type: Array, default: null }
 })
 
 const emit = defineEmits(['files-selected'])
 
+const toast = useToast()
 const dragging = ref(false)
-const files = ref([])
+const selectedFiles = ref(props.files ?? [])
+
+watch(() => props.files, (next) => {
+  if (next) selectedFiles.value = next
+})
 
 function handleFiles(fileList) {
   const selected = Array.from(fileList)
   const maxBytes = props.maxSizeMb * 1024 * 1024
   const valid = selected.filter((f) => {
     if (f.size > maxBytes) {
-      alert(`Fichier trop volumineux : ${f.name} (max ${props.maxSizeMb} Mo)`)
+      toast.add({
+        title: 'Fichier trop volumineux',
+        description: `${f.name} dépasse la limite de ${props.maxSizeMb} Mo.`,
+        color: 'error'
+      })
       return false
     }
     return true
   })
-  files.value = props.multiple ? [...files.value, ...valid] : valid
-  emit('files-selected', files.value)
+  selectedFiles.value = props.multiple ? [...selectedFiles.value, ...valid] : valid
+  emit('files-selected', selectedFiles.value)
 }
 
 function onDrop(e) {
@@ -34,8 +47,8 @@ function onFileInput(e) {
 }
 
 function removeFile(index) {
-  files.value.splice(index, 1)
-  emit('files-selected', files.value)
+  selectedFiles.value.splice(index, 1)
+  emit('files-selected', selectedFiles.value)
 }
 </script>
 
@@ -71,11 +84,11 @@ function removeFile(index) {
     </div>
 
     <ul
-      v-if="files.length"
+      v-if="selectedFiles.length"
       class="mt-4 space-y-2"
     >
       <li
-        v-for="(file, index) in files"
+        v-for="(file, index) in selectedFiles"
         :key="file.name + index"
         class="flex items-center justify-between rounded-md border border-(--ui-border) px-3 py-2 text-sm"
       >

@@ -1,14 +1,14 @@
 <script setup>
 import PdfPageGrid from '~/components/pdf/PdfPageGrid.vue'
 
-const { baseURL } = useApi()
-const { uploadForm } = useApi()
+const { api } = useApi()
+const { loading, submit } = useToolSubmit()
+const toast = useToast()
 
 const file = ref(null)
 const fields = ref([])
 const values = ref({})
 const flatten = ref(false)
-const loading = ref(false)
 
 async function onInspect() {
   if (!file.value) return
@@ -16,14 +16,18 @@ async function onInspect() {
   try {
     const form = new FormData()
     form.append('file', file.value)
-    const result = await $fetch(`${baseURL}/api/v1/forms/inspect`, {
+    const result = await api(`/api/v1/forms/inspect`, {
       method: 'POST',
       body: form
     })
     fields.value = result.fields
     values.value = Object.fromEntries(result.fields.map(f => [f.name, f.value || '']))
   } catch (e) {
-    alert('Erreur lors de l\'inspection : ' + (e?.message || 'inconnue'))
+    toast.add({
+      title: 'Erreur lors de l\'inspection',
+      description: await extractErrorMessage(e),
+      color: 'error'
+    })
   } finally {
     loading.value = false
   }
@@ -31,19 +35,11 @@ async function onInspect() {
 
 async function onFill() {
   if (!file.value) return
-  loading.value = true
-  try {
-    const form = new FormData()
-    form.append('file', file.value)
-    form.append('values', JSON.stringify(values.value))
-    form.append('flatten', String(flatten.value))
-    const blob = await uploadForm('/api/v1/forms/fill', form)
-    downloadBlob(blob, 'filled.pdf')
-  } catch (e) {
-    alert('Erreur lors du remplissage : ' + (e?.message || 'inconnue'))
-  } finally {
-    loading.value = false
-  }
+  const form = new FormData()
+  form.append('file', file.value)
+  form.append('values', JSON.stringify(values.value))
+  form.append('flatten', String(flatten.value))
+  await submit('/api/v1/forms/fill', form, 'filled.pdf', 'Erreur lors du remplissage')
 }
 </script>
 

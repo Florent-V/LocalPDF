@@ -1,24 +1,15 @@
 <script setup>
 import FileThumbnailList from '~/components/pdf/FileThumbnailList.vue'
 
-const { uploadForm } = useApi()
+const { loading, submit } = useToolSubmit()
 
 const files = ref([])
-const loading = ref(false)
 
 async function onSubmit() {
   if (!files.value.length) return
-  loading.value = true
-  try {
-    const form = new FormData()
-    files.value.forEach(f => form.append('files', f))
-    const blob = await uploadForm('/api/v1/convert/images-to-pdf', form)
-    downloadBlob(blob, 'images.pdf')
-  } catch (e) {
-    alert('Erreur lors de la conversion : ' + (e?.message || 'inconnue'))
-  } finally {
-    loading.value = false
-  }
+  const form = new FormData()
+  files.value.forEach(f => form.append('files', f))
+  await submit('/api/v1/convert/images-to-pdf', form, 'images.pdf', 'Erreur lors de la conversion')
 }
 </script>
 
@@ -34,6 +25,7 @@ async function onSubmit() {
     <FileDropzone
       accept="image/*"
       multiple
+      :files="files"
       @files-selected="files = $event"
     />
 
