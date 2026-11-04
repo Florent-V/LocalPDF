@@ -1,5 +1,4 @@
 import base64
-import zipfile
 from pathlib import Path
 from typing import BinaryIO
 
@@ -45,12 +44,6 @@ def split_pdf(
             writer.write(out)
         output_files.append(out_path)
     return output_files
-
-
-def build_zip(output_path: Path, files: list[Path]) -> None:
-    with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zf:
-        for file in files:
-            zf.write(file, arcname=file.name)
 
 
 def generate_thumbnails(pdf_path: Path, output_dir: Path, dpi: int = 100) -> list[str]:

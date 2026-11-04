@@ -1,6 +1,6 @@
+import logging
 import shutil
 import subprocess
-import zipfile
 from pathlib import Path
 from typing import BinaryIO
 
@@ -10,6 +10,8 @@ from fastapi import HTTPException
 from pdf2docx import Converter
 from PIL import Image
 from xhtml2pdf import pisa
+
+logger = logging.getLogger(__name__)
 
 
 def images_to_pdf(images: list[tuple[str, BinaryIO]], output_path: Path) -> None:
@@ -30,12 +32,17 @@ def images_to_pdf(images: list[tuple[str, BinaryIO]], output_path: Path) -> None
     )
 
 
+MIN_RENDER_DPI = 36
+MAX_RENDER_DPI = 600
+
+
 def pdf_to_images(
     file: BinaryIO,
     output_dir: Path,
     dpi: int = 150,
     fmt: str = "png",
 ) -> list[Path]:
+    dpi = max(MIN_RENDER_DPI, min(dpi, MAX_RENDER_DPI))
     doc = fitz.open(stream=file.read(), filetype="pdf")
     fmt = fmt.lower()
     if fmt not in ("png", "jpg", "jpeg", "webp"):
@@ -54,7 +61,10 @@ def pdf_to_images(
 
 
 def office_to_pdf(file: BinaryIO, output_dir: Path, original_name: str) -> Path:
-    input_path = output_dir / original_name
+    safe_name = Path(original_name).name
+    if not safe_name or safe_name in (".", ".."):
+        safe_name = "document"
+    input_path = output_dir / safe_name
     with open(input_path, "wb") as out:
         shutil.copyfileobj(file, out)
 
@@ -91,12 +101,17 @@ def office_to_pdf(file: BinaryIO, output_dir: Path, original_name: str) -> Path:
             pass
 
     if result.returncode != 0:
+        logger.warning(
+            "LibreOffice conversion failed (code %s): %s",
+            result.returncode,
+            result.stderr.decode("utf-8", errors="ignore"),
+        )
         raise HTTPException(
             status_code=500,
-            detail=f"Erreur LibreOffice: {result.stderr.decode('utf-8', errors='ignore')}",
+            detail="Erreur lors de la conversion du document.",
         )
 
-    base = Path(original_name).stem
+    base = Path(safe_name).stem
     pdf_path = output_dir / f"{base}.pdf"
     if not pdf_path.exists():
         # LibreOffice may produce a different file name for some formats
@@ -170,9 +185,3 @@ def markdown_to_pdf(md_text: str, output_path: Path) -> None:
         raise HTTPException(
             status_code=500, detail="Erreur lors de la génération du PDF."
         )
-
-
-def build_zip(output_path: Path, files: list[Path]) -> None:
-    with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zf:
-        for file in files:
-            zf.write(file, arcname=file.name)

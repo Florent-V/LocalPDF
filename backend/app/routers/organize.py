@@ -1,37 +1,28 @@
-import shutil
-
 from fastapi import APIRouter, BackgroundTasks, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 from pypdf import PdfReader
 
-from app.core.config import settings
-from app.core.tempfiles import create_job_dir, delete_job, get_job_dir, register_job
+from app.core.archives import build_zip
+from app.core.tempfiles import create_thumbnail_job, delete_job, get_job_dir, job_workspace
+from app.core.uploads import check_upload_size, validate_pdf_upload
 from app.schemas.organize import JobResponse, ReorderRequest
 from app.services import organize as organize_service
 
 router = APIRouter()
 
 
-def _size_check(file: UploadFile):
-    if file.size is not None and file.size > settings.max_upload_bytes:
-        raise HTTPException(status_code=413, detail="Fichier trop volumineux.")
-
-
 @router.post("/merge")
 def merge(files: list[UploadFile], background_tasks: BackgroundTasks):
     if len(files) < 2:
         raise HTTPException(status_code=400, detail="Au moins deux PDF sont requis.")
-    ws = create_job_dir()
-    try:
+    with job_workspace() as ws:
         output = ws / "merged.pdf"
         ordered = []
         for upload in files:
-            _size_check(upload)
+            check_upload_size(upload)
+            validate_pdf_upload(upload)
             ordered.append((upload.filename or "file.pdf", upload.file))
         organize_service.merge_pdfs(ordered, output)
-    except Exception:
-        delete_job(ws.name)
-        raise
     background_tasks.add_task(delete_job, ws.name)
     return FileResponse(
         path=output,
@@ -50,7 +41,8 @@ def split(
     all_pages: bool = Form(False),
     every_n: int | None = Form(None),
 ):
-    _size_check(file)
+    check_upload_size(file)
+    validate_pdf_upload(file)
     ranges = None
     if every_n and every_n > 0:
         total_pages = len(PdfReader(file.file).pages)
@@ -62,8 +54,7 @@ def split(
     elif not all_pages and (start is not None or end is not None):
         ranges = [(start or 1, end or 9999)]
 
-    ws = create_job_dir()
-    try:
+    with job_workspace() as ws:
         result_files = organize_service.split_pdf(file.file, ws, ranges)
         if len(result_files) == 1:
             out = result_files[0]
@@ -75,10 +66,7 @@ def split(
                 background=background_tasks,
             )
         zip_path = ws / "split.zip"
-        organize_service.build_zip(zip_path, result_files)
-    except Exception:
-        delete_job(ws.name)
-        raise
+        build_zip(zip_path, result_files)
 
     background_tasks.add_task(delete_job, ws.name)
 
@@ -96,17 +84,9 @@ def split(
 
 @router.post("/jobs", response_model=JobResponse)
 def create_organize_job(file: UploadFile):
-    _size_check(file)
-    from app.core.tempfiles import create_job_dir
-
-    ws = create_job_dir()
-    input_path = ws / "input.pdf"
-    with open(input_path, "wb") as out:
-        shutil.copyfileobj(file.file, out)
-    page_count = len(PdfReader(input_path).pages)
-    thumbs = organize_service.generate_thumbnails(input_path, ws)
-    job_id = ws.name
-    register_job(ws)
+    check_upload_size(file)
+    validate_pdf_upload(file)
+    job_id, page_count, thumbs = create_thumbnail_job(file, organize_service.generate_thumbnails)
     return JobResponse(job_id=job_id, page_count=page_count, thumbnails=thumbs)
 
 

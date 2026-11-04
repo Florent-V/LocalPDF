@@ -3,16 +3,15 @@ import json
 from fastapi import APIRouter, BackgroundTasks, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
-from app.core.config import settings
-from app.core.tempfiles import create_job_dir, delete_job
+from app.core.tempfiles import delete_job, job_workspace
+from app.core.uploads import check_upload_size, validate_image_upload, validate_pdf_upload
 from app.services import modify as modify_service
 
 router = APIRouter()
 
 
-def _size_check(file: UploadFile):
-    if file.size is not None and file.size > settings.max_upload_bytes:
-        raise HTTPException(status_code=413, detail="Fichier trop volumineux.")
+def _parse_page_list(pages: str) -> list[int] | None:
+    return [int(p.strip()) for p in pages.split(",") if p.strip()] or None
 
 
 @router.post("/rotate")
@@ -23,7 +22,8 @@ def rotate(
     pages: str = Form(""),
     rotations: str = Form(""),
 ):
-    _size_check(file)
+    check_upload_size(file)
+    validate_pdf_upload(file)
 
     rotations_map = None
     if rotations.strip():
@@ -34,20 +34,16 @@ def rotate(
         rotations_map = {int(k): int(v) for k, v in parsed.items()}
 
     if rotations_map is None:
-        page_list = [int(p.strip()) for p in pages.split(",") if p.strip()] or None
+        page_list = _parse_page_list(pages)
         if angle not in (90, 180, 270):
             raise HTTPException(status_code=400, detail="Angle must be 90, 180 or 270.")
 
-    ws = create_job_dir()
-    try:
+    with job_workspace() as ws:
         output = ws / "rotated.pdf"
         if rotations_map is not None:
             modify_service.rotate_pdf_map(file.file, output, rotations_map)
         else:
             modify_service.rotate_pdf(file.file, output, angle, page_list)
-    except Exception:
-        delete_job(ws.name)
-        raise
     background_tasks.add_task(delete_job, ws.name)
     return FileResponse(
         path=output,
@@ -68,17 +64,18 @@ def watermark(
     width: int | None = Form(None),
     pages: str = Form(""),
 ):
-    _size_check(file)
+    check_upload_size(file)
+    validate_pdf_upload(file)
     if image:
-        _size_check(image)
+        check_upload_size(image)
+        validate_image_upload(image)
     if not text and not image:
         raise HTTPException(
             status_code=400, detail="Texte ou image requis pour le filigrane."
         )
 
-    page_list = [int(p.strip()) for p in pages.split(",") if p.strip()] or None
-    ws = create_job_dir()
-    try:
+    page_list = _parse_page_list(pages)
+    with job_workspace() as ws:
         output = ws / "watermarked.pdf"
         if text:
             modify_service.add_text_watermark(
@@ -88,9 +85,6 @@ def watermark(
             modify_service.add_image_watermark(
                 file.file, output, image.file, position, opacity, width, page_list
             )
-    except Exception:
-        delete_job(ws.name)
-        raise
     background_tasks.add_task(delete_job, ws.name)
     return FileResponse(
         path=output,

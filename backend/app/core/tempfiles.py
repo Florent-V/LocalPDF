@@ -1,15 +1,26 @@
 import asyncio
 import shutil
 import uuid
+from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from threading import Lock
+from typing import Callable
+
+from fastapi import UploadFile
+from pypdf import PdfReader
 
 from app.core.config import settings
 
 _job_registry: dict[str, dict] = {}
 _registry_lock = Lock()
 _purge_task: asyncio.Task | None = None
+
+# uid of the authenticated user of the current request (set by
+# app.core.owner.bind_owner). Jobs are scoped to it: another user's job_id
+# behaves exactly like an unknown or expired one.
+current_owner: ContextVar[str | None] = ContextVar("current_owner", default=None)
 
 
 def create_job_dir() -> Path:
@@ -19,6 +30,7 @@ def create_job_dir() -> Path:
     with _registry_lock:
         _job_registry[job_id] = {
             "path": str(path),
+            "owner": current_owner.get(),
             "created_at": datetime.now(timezone.utc),
             "last_access": datetime.now(timezone.utc),
         }
@@ -28,7 +40,7 @@ def create_job_dir() -> Path:
 def get_job_dir(job_id: str) -> Path | None:
     with _registry_lock:
         job = _job_registry.get(job_id)
-        if not job:
+        if not job or job["owner"] != current_owner.get():
             return None
         job["last_access"] = datetime.now(timezone.utc)
     return Path(job["path"])
@@ -39,6 +51,7 @@ def register_job(path: Path) -> str:
     with _registry_lock:
         _job_registry[job_id] = {
             "path": str(path),
+            "owner": current_owner.get(),
             "created_at": datetime.now(timezone.utc),
             "last_access": datetime.now(timezone.utc),
         }
@@ -46,6 +59,14 @@ def register_job(path: Path) -> str:
 
 
 def delete_job(job_id: str) -> None:
+    with _registry_lock:
+        job = _job_registry.get(job_id)
+        if not job or job["owner"] != current_owner.get():
+            return
+    _purge_job(job_id)
+
+
+def _purge_job(job_id: str) -> None:
     with _registry_lock:
         job = _job_registry.pop(job_id, None)
     if job:
@@ -61,7 +82,7 @@ def _cleanup_expired():
             if now - meta["last_access"] > ttl:
                 expired.append(job_id)
     for job_id in expired:
-        delete_job(job_id)
+        _purge_job(job_id)
 
 
 async def _purge_loop():
@@ -81,14 +102,36 @@ def stop_purge_task():
         _purge_task.cancel()
 
 
-class TempWorkspace:
-    """Context manager pour un traitement mono-étape. Supprime le dossier à la sortie."""
+@contextmanager
+def job_workspace():
+    """Create a job dir; delete it automatically if the block raises.
 
-    def __init__(self):
-        self.path = create_job_dir()
+    On success the workspace is left in place — the caller schedules its
+    eventual cleanup (typically `background_tasks.add_task(delete_job,
+    ws.name)`) once the response referencing its files has been built.
+    """
+    ws = create_job_dir()
+    try:
+        yield ws
+    except Exception:
+        delete_job(ws.name)
+        raise
 
-    def __enter__(self):
-        return self.path
 
-    def __exit__(self, exc_type, exc, tb):
-        delete_job(self.path.name)
+def create_thumbnail_job(
+    file: UploadFile, thumbnail_fn: Callable[[Path, Path], list[str]]
+) -> tuple[str, int, list[str]]:
+    """Saves the upload as a registered job, page-counts it, and generates
+    thumbnails via `thumbnail_fn` — the "create job + save input.pdf + count
+    pages + register" sequence previously duplicated between the organize
+    and redact job-creation endpoints.
+    """
+    with job_workspace() as ws:
+        input_path = ws / "input.pdf"
+        with open(input_path, "wb") as out:
+            shutil.copyfileobj(file.file, out)
+        page_count = len(PdfReader(input_path).pages)
+        thumbs = thumbnail_fn(input_path, ws)
+        job_id = ws.name
+        register_job(ws)
+    return job_id, page_count, thumbs

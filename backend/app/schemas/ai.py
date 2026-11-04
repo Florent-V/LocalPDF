@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 
 
 class AIConfig(BaseModel):
-    provider: str = Field(pattern="^(ollama|openai|anthropic)$")
+    provider: str = Field(pattern="^(ollama|openai|anthropic|openrouter)$")
     base_url: str | None = None
     api_key: str | None = None
     model: str
@@ -21,9 +21,3 @@ class TranslateRequest(BaseModel):
 class ChatRequest(BaseModel):
     config: AIConfig
     question: str = Field(min_length=1)
-
-
-class AIJobResponse(BaseModel):
-    job_id: str
-    page_count: int
-    markdown: str

@@ -1,4 +1,4 @@
-from typing import BinaryIO
+from typing import BinaryIO, Callable
 
 import pymupdf4llm
 
@@ -6,24 +6,59 @@ from app.services.ai.providers.anthropic_provider import AnthropicProvider
 from app.services.ai.providers.base import AIProvider
 from app.services.ai.providers.ollama_provider import OllamaProvider
 from app.services.ai.providers.openai_provider import OpenAIProvider
+from app.services.ai.providers.openrouter_provider import OpenRouterProvider
+
+
+def _require_api_key(config: dict, provider: str) -> str:
+    api_key = config.get("api_key")
+    if not api_key:
+        raise ValueError(f"Une clé API est requise pour le provider « {provider} ».")
+    return api_key
+
+
+def _build_ollama(config: dict) -> AIProvider:
+    return OllamaProvider(
+        base_url=config.get("base_url", "http://localhost:11434"),
+        model=config.get("model", "llama3.1:8b"),
+    )
+
+
+def _build_openai(config: dict) -> AIProvider:
+    return OpenAIProvider(
+        api_key=_require_api_key(config, "openai"),
+        model=config.get("model", "gpt-4o-mini"),
+    )
+
+
+def _build_anthropic(config: dict) -> AIProvider:
+    return AnthropicProvider(
+        api_key=_require_api_key(config, "anthropic"),
+        model=config.get("model", "claude-3-5-sonnet-20241022"),
+    )
+
+
+def _build_openrouter(config: dict) -> AIProvider:
+    return OpenRouterProvider(
+        api_key=_require_api_key(config, "openrouter"),
+        model=config.get("model", "openai/gpt-4o-mini"),
+        base_url=config.get("base_url") or None,
+    )
+
+
+_PROVIDER_FACTORIES: dict[str, Callable[[dict], AIProvider]] = {
+    "ollama": _build_ollama,
+    "openai": _build_openai,
+    "anthropic": _build_anthropic,
+    "openrouter": _build_openrouter,
+}
 
 
 def get_provider(provider: str, config: dict) -> AIProvider:
-    if provider == "ollama":
-        return OllamaProvider(
-            base_url=config.get("base_url", "http://localhost:11434"),
-            model=config.get("model", "llama3.1:8b"),
-        )
-    if provider == "openai":
-        return OpenAIProvider(
-            api_key=config["api_key"], model=config.get("model", "gpt-4o-mini")
-        )
-    if provider == "anthropic":
-        return AnthropicProvider(
-            api_key=config["api_key"],
-            model=config.get("model", "claude-3-5-sonnet-20241022"),
-        )
-    raise ValueError(f"Provider inconnu : {provider}")
+    try:
+        factory = _PROVIDER_FACTORIES[provider]
+    except KeyError as exc:
+        raise ValueError(f"Provider inconnu : {provider}") from exc
+    return factory(config)
 
 
 def pdf_to_markdown(file: BinaryIO) -> str:

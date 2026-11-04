@@ -16,9 +16,7 @@ def rotate_pdf(
     angle: int,
     pages: list[int] | None = None,
 ) -> None:
-    if angle not in (90, 180, 270):
-        raise HTTPException(status_code=400, detail="Angle must be 90, 180 or 270.")
-
+    """angle is assumed pre-validated (90/180/270) by the router boundary."""
     doc = fitz.open(stream=file.read(), filetype="pdf")
     total = len(doc)
     targets = pages if pages else list(range(1, total + 1))

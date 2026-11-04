@@ -1,8 +1,9 @@
 from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 
-from app.core.config import settings
-from app.core.tempfiles import create_job_dir, delete_job
+from app.core.archives import build_zip
+from app.core.tempfiles import delete_job, job_workspace
+from app.core.uploads import check_upload_size, validate_image_upload, validate_pdf_upload
 from app.services import convert as convert_service
 
 router = APIRouter()
@@ -10,26 +11,18 @@ router = APIRouter()
 MARKDOWN_MAX_FILE_BYTES = 20 * 1024 * 1024
 
 
-def _size_check(file: UploadFile):
-    if file.size is not None and file.size > settings.max_upload_bytes:
-        raise HTTPException(status_code=413, detail="Fichier trop volumineux.")
-
-
 @router.post("/images-to-pdf")
 def images_to_pdf(files: list[UploadFile], background_tasks: BackgroundTasks):
     if len(files) < 1:
         raise HTTPException(status_code=400, detail="Au moins une image est requise.")
-    ws = create_job_dir()
-    try:
+    with job_workspace() as ws:
         output = ws / "images.pdf"
         images = []
         for upload in files:
-            _size_check(upload)
+            check_upload_size(upload)
+            validate_image_upload(upload)
             images.append((upload.filename or "image", upload.file))
         convert_service.images_to_pdf(images, output)
-    except Exception:
-        delete_job(ws.name)
-        raise
     background_tasks.add_task(delete_job, ws.name)
     return FileResponse(
         path=output,
@@ -46,15 +39,12 @@ def pdf_to_images(
     dpi: int = Form(150),
     fmt: str = Form("png"),
 ):
-    _size_check(file)
-    ws = create_job_dir()
-    try:
+    check_upload_size(file)
+    validate_pdf_upload(file)
+    with job_workspace() as ws:
         result_files = convert_service.pdf_to_images(file.file, ws, dpi, fmt)
         zip_path = ws / "images.zip"
-        convert_service.build_zip(zip_path, result_files)
-    except Exception:
-        delete_job(ws.name)
-        raise
+        build_zip(zip_path, result_files)
 
     background_tasks.add_task(delete_job, ws.name)
 
@@ -75,15 +65,11 @@ def office_to_pdf(
     file: UploadFile,
     background_tasks: BackgroundTasks,
 ):
-    _size_check(file)
-    ws = create_job_dir()
-    try:
+    check_upload_size(file)
+    with job_workspace() as ws:
         output = convert_service.office_to_pdf(
             file.file, ws, file.filename or "document.docx"
         )
-    except Exception:
-        delete_job(ws.name)
-        raise
     background_tasks.add_task(delete_job, ws.name)
     return FileResponse(
         path=output,
@@ -95,14 +81,11 @@ def office_to_pdf(
 
 @router.post("/pdf-to-word")
 def pdf_to_word(file: UploadFile, background_tasks: BackgroundTasks):
-    _size_check(file)
-    ws = create_job_dir()
-    try:
+    check_upload_size(file)
+    validate_pdf_upload(file)
+    with job_workspace() as ws:
         output = ws / "document.docx"
         convert_service.pdf_to_word(file.file, output)
-    except Exception:
-        delete_job(ws.name)
-        raise
     background_tasks.add_task(delete_job, ws.name)
     return FileResponse(
         path=output,
@@ -130,13 +113,9 @@ def markdown_to_pdf(
     if not md_text.strip():
         raise HTTPException(status_code=400, detail="Contenu Markdown requis.")
 
-    ws = create_job_dir()
-    try:
+    with job_workspace() as ws:
         output = ws / "document.pdf"
         convert_service.markdown_to_pdf(md_text, output)
-    except Exception:
-        delete_job(ws.name)
-        raise
     background_tasks.add_task(delete_job, ws.name)
     return FileResponse(
         path=output,

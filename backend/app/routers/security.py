@@ -1,21 +1,13 @@
-import shutil
-
 from fastapi import APIRouter, BackgroundTasks, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
-from pypdf import PdfReader
 
-from app.core.config import settings
-from app.core.tempfiles import create_job_dir, delete_job, get_job_dir, register_job
+from app.core.tempfiles import create_thumbnail_job, delete_job, get_job_dir, job_workspace
+from app.core.uploads import check_upload_size, validate_pdf_upload
 from app.schemas.security import RedactRequest
 from app.services import organize as organize_service
 from app.services import security as security_service
 
 router = APIRouter()
-
-
-def _size_check(file: UploadFile):
-    if file.size is not None and file.size > settings.max_upload_bytes:
-        raise HTTPException(status_code=413, detail="Fichier trop volumineux.")
 
 
 @router.post("/protect")
@@ -27,9 +19,9 @@ def protect(
     allow_printing: bool = Form(True),
     allow_copying: bool = Form(False),
 ):
-    _size_check(file)
-    ws = create_job_dir()
-    try:
+    check_upload_size(file)
+    validate_pdf_upload(file)
+    with job_workspace() as ws:
         output = ws / "protected.pdf"
         security_service.protect_pdf(
             file.file,
@@ -39,9 +31,6 @@ def protect(
             allow_printing,
             allow_copying,
         )
-    except Exception:
-        delete_job(ws.name)
-        raise
     background_tasks.add_task(delete_job, ws.name)
     return FileResponse(
         path=output,
@@ -57,17 +46,11 @@ def unlock(
     background_tasks: BackgroundTasks,
     password: str = Form(...),
 ):
-    _size_check(file)
-    ws = create_job_dir()
-    try:
+    check_upload_size(file)
+    validate_pdf_upload(file)
+    with job_workspace() as ws:
         output = ws / "unlocked.pdf"
         security_service.unlock_pdf(file.file, output, password)
-    except HTTPException:
-        delete_job(ws.name)
-        raise
-    except Exception:
-        delete_job(ws.name)
-        raise
     background_tasks.add_task(delete_job, ws.name)
     return FileResponse(
         path=output,
@@ -79,15 +62,9 @@ def unlock(
 
 @router.post("/redact/jobs")
 def create_redact_job(file: UploadFile):
-    _size_check(file)
-    ws = create_job_dir()
-    input_path = ws / "input.pdf"
-    with open(input_path, "wb") as out:
-        shutil.copyfileobj(file.file, out)
-    page_count = len(PdfReader(input_path).pages)
-    thumbs = organize_service.generate_thumbnails(input_path, ws)
-    job_id = ws.name
-    register_job(ws)
+    check_upload_size(file)
+    validate_pdf_upload(file)
+    job_id, page_count, thumbs = create_thumbnail_job(file, organize_service.generate_thumbnails)
     return {"job_id": job_id, "page_count": page_count, "thumbnails": thumbs}
 
 
