@@ -24,3 +24,7 @@ tmp/
 .vscode/
 .idea/
 .pnpm-store/
+.env.prod
+
+# Production backups (make prod-backup)
+backups/

@@ -10,8 +10,8 @@ données ne quittent son ordinateur.
 
 1. **Frontend** : Nuxt 3 (Vue 3) + Nuxt UI + TailwindCSS.
 2. **Backend** : Python 3.11+ / FastAPI.
-3. **Persistance** : aucune base de données — service stateless, fichiers traités
-   en mémoire ou en dossier temporaire (UUID par job), purge TTL 30 min.
+3. **Persistance** : fichiers traités en mémoire ou en dossier temporaire (UUID par
+   job), purge TTL 30 min. Seul état durable : les sessions OAuth (SQLite, `/data`).
 4. **Déploiement** : 100% Docker via `docker-compose`.
 5. **Commandes** : orchestration exclusive via `Makefile`.
 
@@ -30,6 +30,13 @@ Toutes les fonctionnalités prévues sont implémentées et validées :
 - **Post-Phase 4** : feature Markdown → PDF ajoutée (commit `a5d01a32` et
   historique associé), avec durcissement sécurité (SSRF/local-file-read
   bloqués via `link_callback`, cap taille fichier 20MB, tests dédiés).
+
+## Authentification
+
+Le backend FastAPI est le client OAuth (BFF), module `backend/app/auth/` (spec
+`02-APPS-PYTHON-CLIENT-OAUTH.md`, version `AUTH_MODULE_VERSION`). Front statique
+(`nuxt generate`, `ssr: false`) servi par Caddy ; session côté serveur (SQLite),
+cookie opaque. Voir `docs/deploiement.md`.
 
 ## Structure des dossiers
 
@@ -75,8 +82,8 @@ pdf-tools/
 
 ## Ports
 
-- Backend : `8000` (configurable via `.env`)
-- Frontend : `3000` (configurable via `NUXT_PORT`/`NUXT_HOST`)
+- Backend : `8010` en dev (`BACKEND_PORT`, réseau `host`) ; `8000` dans le conteneur de prod, non publié
+- Frontend : `3010` en dev (`FRONTEND_PORT`) ; en prod Caddy sur `127.0.0.1:${FRONTEND_PORT}`
 
 ## Conventions
 

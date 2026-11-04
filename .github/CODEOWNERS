@@ -1,0 +1,2 @@
+# Any change to the CI/CD (which holds the deployment) needs the owner's review.
+/.github/ @Florent-V

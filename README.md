@@ -78,9 +78,8 @@ Aucune persistance : les traitements simples créent un dossier temporaire jetab
 make up
 ```
 
-- Frontend → http://localhost:3000
-- Backend → http://localhost:8000
-- Health check → http://localhost:8000/health
+- Application → http://localhost:3010 (port `FRONTEND_PORT`) — connexion via le serveur OAuth, voir [docs/deploiement.md](docs/deploiement.md)
+- L'API (client OAuth) écoute sur `BACKEND_PORT` (8010) ; en production elle n'est joignable que par Caddy
 
 ### Développement natif
 
@@ -109,6 +108,7 @@ pnpm dev
 | `make build` | Reconstruit les images Docker |
 | `make test` | Tests backend + frontend |
 | `make lint` | Linters backend + frontend |
+| `make prod-deploy` | Mise à jour en production (voir [docs/deploiement.md](docs/deploiement.md)) |
 | `make clean` | Arrête et nettoie volumes / caches |
 
 ## Utiliser Ollama en local (IA 100% offline)
@@ -125,14 +125,13 @@ pnpm dev
 
 | Variable | Défaut | Description |
 |----------|--------|-------------|
-| `CORS_ORIGINS` | `http://localhost:3000` | Origines autorisées (séparées par des virgules) |
 | `MAX_UPLOAD_MB` | `200` | Taille maximale d'upload (Mo) |
 | `TEMP_TTL_MINUTES` | `30` | TTL des jobs multi-étapes |
-| `NUXT_PUBLIC_API_BASE_URL` | `http://localhost:8000` | URL du backend consommée par le frontend |
+| `OAUTH_ISSUER`, `OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET`, `PUBLIC_ORIGIN` | — | Authentification (client OAuth par découverte), voir `.env.example` et [docs/deploiement.md](docs/deploiement.md) |
 
 ## API
 
-Documentation interactive auto-générée par FastAPI : http://localhost:8000/docs
+Documentation FastAPI (`/docs`) : non routée par Caddy en production ; toutes les routes `/api/*` exigent une session.
 
 Principaux préfixes de routes :
 

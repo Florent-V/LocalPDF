@@ -1,20 +1,30 @@
+# Local development. The Python API is the OAuth client (BFF); Nuxt only serves
+# the pages and proxies /api and /auth to it, so the browser sees one origin.
 services:
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: localpdf-backend
-    ports:
-      - "${BACKEND_PORT:-8000}:${BACKEND_PORT:-8000}"
+    # Host network: the OAuth issuer is http://localhost:8080 and must be
+    # reachable under that very name from the API (discovery checks it strictly).
+    network_mode: host
     environment:
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
       - MAX_UPLOAD_MB=${MAX_UPLOAD_MB:-200}
+      - OAUTH_ISSUER=${OAUTH_ISSUER:-http://localhost:8080}
+      - OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID}
+      - OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET}
+      - PUBLIC_ORIGIN=http://localhost:${FRONTEND_PORT:-3010}
+      - APP_ENV=dev
+      - COOKIE_SECURE=false
+      - SESSION_DB_PATH=/data/sessions.db
     deploy:
       resources:
         limits:
           memory: 2G
     volumes:
       - ./backend:/app
+      - backend-data:/data
       - /app/__pycache__
       - /app/.venv
     command: uvicorn app.main:app --host 0.0.0.0 --port ${BACKEND_PORT:-8000} --reload
@@ -26,17 +36,26 @@ services:
       dockerfile: Dockerfile
     container_name: localpdf-frontend
     ports:
-      - "${FRONTEND_PORT:-3000}:${FRONTEND_PORT:-3000}"
+      - "${FRONTEND_PORT:-3010}:${FRONTEND_PORT:-3010}"
     environment:
-      - NUXT_PUBLIC_API_BASE_URL=${NUXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
-      - NUXT_PORT=${FRONTEND_PORT:-3000}
+      - BACKEND_URL=http://host.docker.internal:${BACKEND_PORT:-8000}
+      - NUXT_PORT=${FRONTEND_PORT:-3010}
       - NUXT_HOST=0.0.0.0
       - CI=true
+    deploy:
+      resources:
+        limits:
+          memory: 2G
     volumes:
       - ./frontend:/app
       - /app/node_modules
       - /app/.nuxt
-    command: pnpm dev
+    command: pnpm --config.verify-deps-before-run=warn dev
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - backend
+
+volumes:
+  backend-data:
