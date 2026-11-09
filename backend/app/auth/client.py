@@ -1,6 +1,6 @@
 import logging
 
-import httpx
+import httpx2
 from authlib.integrations.base_client.errors import OAuthError
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 
@@ -9,7 +9,7 @@ from app.auth.discovery import Discovery
 
 log = logging.getLogger("app.auth")
 
-TIMEOUT = httpx.Timeout(10.0, connect=5.0)
+TIMEOUT = httpx2.Timeout(10.0, connect=5.0)
 
 
 class InvalidGrant(Exception):
@@ -23,9 +23,9 @@ class TemporaryError(Exception):
 class OAuthClient:
     """Authorization code + PKCE S256 client. Authlib's starlette integration
     is deliberately not used: it keeps its state in a signed cookie, which
-    cannot be revoked. One httpx client (Authlib's) serves every call."""
+    cannot be revoked. One httpx2 client (Authlib's) serves every call."""
 
-    def __init__(self, settings: AuthSettings, discovery: Discovery, transport: httpx.AsyncBaseTransport | None = None):
+    def __init__(self, settings: AuthSettings, discovery: Discovery, transport: httpx2.AsyncBaseTransport | None = None):
         self.settings = settings
         self.discovery = discovery
         self.http = AsyncOAuth2Client(
@@ -63,7 +63,7 @@ class OAuthClient:
             if exc.error in ("invalid_grant", "invalid_client", "unauthorized_client", "access_denied"):
                 raise InvalidGrant(exc.error) from exc
             raise TemporaryError(f"{exc.error}: {exc.description}") from exc
-        except httpx.HTTPError as exc:
+        except httpx2.HTTPError as exc:
             raise TemporaryError(str(exc)) from exc
         return dict(token)
 
@@ -94,7 +94,7 @@ class OAuthClient:
         endpoint = self.discovery.get("userinfo_endpoint")
         try:
             response = await self.http.get(endpoint, headers={"Authorization": f"Bearer {access_token}"}, auth=None)
-        except httpx.HTTPError as exc:
+        except httpx2.HTTPError as exc:
             raise TemporaryError(str(exc)) from exc
         if response.status_code in (401, 403):
             raise InvalidGrant(f"userinfo: HTTP {response.status_code}")
