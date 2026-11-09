@@ -10,7 +10,7 @@ dependencies = [
     "pydantic-settings==2.6.1",
     "pymupdf==1.24.13",
     "pypdf==6.21.4",
-    "pikepdf==9.4.0",
+    "pikepdf==10.17.0",
     "pdf2docx==0.5.8",
     "pymupdf4llm==0.0.17",
     "markdown==3.11.2",
