@@ -15,7 +15,7 @@ from app.auth.middleware import AuthMiddleware
 from app.auth.routes import router
 from app.auth.store import SessionStore
 
-AUTH_MODULE_VERSION = "2.0.0"
+AUTH_MODULE_VERSION = "2.2.0"
 
 log = logging.getLogger("app.auth")
 

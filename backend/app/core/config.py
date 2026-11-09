@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     app_name: str = "LocalPDF API"
     max_upload_mb: int = 200
     temp_ttl_minutes: int = 30
-    temp_root: str = "/tmp/localpdf"
+    temp_root: str = "/tmp/localpdf"  # noqa: S108 (container scratch dir)
 
     @property
     def max_upload_bytes(self) -> int:

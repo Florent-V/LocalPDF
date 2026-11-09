@@ -1,4 +1,5 @@
-from typing import BinaryIO, Callable
+from collections.abc import Callable
+from typing import BinaryIO
 
 import pymupdf4llm
 

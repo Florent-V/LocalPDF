@@ -1,6 +1,7 @@
 import pytest
 
 from app.tests.auth.conftest import ORIGIN, client_for, login
+from app.tests.auth.fake_server import ISSUER
 
 pytestmark = pytest.mark.anyio
 
@@ -52,7 +53,7 @@ async def test_logout_is_protected_by_the_origin_check(running):
 async def test_logout_deletes_the_session_and_clears_the_cookie(running):
     client, ctx, _ = running
     response = await client.post("/auth/logout", headers={"Origin": ORIGIN})
-    assert response.status_code == 200 and response.json() == {"redirect": "/"}
+    assert response.status_code == 200 and response.json() == {"redirect": f"{ISSUER}/logout?redirect_uri=http%3A%2F%2Flocalhost%3A3010%2F"}
     assert "session=" in response.headers["set-cookie"] and "Max-Age=0" in response.headers["set-cookie"]
     client.cookies.clear()
     assert (await client.get("/api/private")).status_code == 401

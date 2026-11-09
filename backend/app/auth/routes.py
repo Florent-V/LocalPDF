@@ -1,6 +1,7 @@
 import logging
 import re
 import secrets
+from urllib.parse import urlencode
 
 import httpx
 from fastapi import APIRouter, Request
@@ -120,6 +121,20 @@ async def callback(request: Request):
     return response
 
 
+def _logout_redirect(ctx) -> str:
+    """Where to send the browser to end the SSO session too.
+
+    Standard servers publish `end_session_endpoint`. Otherwise fall back to the
+    `{issuer}/logout?redirect_uri=` convention of the home OAuth server, which only
+    redirects back to the origin of a registered application.
+    """
+    endpoint = ctx.discovery.get("end_session_endpoint")
+    if endpoint:
+        return endpoint
+    query = urlencode({"redirect_uri": f"{ctx.settings.public_origin}/"})
+    return f"{ctx.settings.oauth_issuer.rstrip('/')}/logout?{query}"
+
+
 @router.post("/auth/logout")
 async def logout(request: Request):
     ctx = request.app.state.auth
@@ -130,7 +145,7 @@ async def logout(request: Request):
         await ctx.store.delete_session(id_hash)
         if session and session.refresh_token:
             await ctx.client.revoke(session.refresh_token)
-    response = JSONResponse({"redirect": ctx.discovery.get("end_session_endpoint") or "/"}, headers=NO_STORE)
+    response = JSONResponse({"redirect": _logout_redirect(ctx)}, headers=NO_STORE)
     _clear_cookie(response, ctx.settings)
     return response
 
