@@ -2,7 +2,7 @@
 
 LocalPDF est protégé par le serveur OAuth (dépôt `OAuth-serveur`) : sans compte autorisé sur l'application, rien
 n'est accessible. Ce document couvre l'architecture, le test en local avec le serveur OAuth de dev, le premier
-déploiement et les mises à jour. La spécification suivie est `02-APPS-PYTHON-CLIENT-OAUTH.md`.
+déploiement et les mises à jour. La spécification suivie est `docs/authentification.md`.
 La procédure complète de mise en production et le déploiement continu sont dans
 [mise-en-production.md](mise-en-production.md).
 
@@ -79,14 +79,14 @@ OAUTH_CLIENT_ID=localpdf-dev
 OAUTH_CLIENT_SECRET=<secret noté à l'étape 2>
 ```
 
-Modèle : `.env.example`. En dev, `APP_ENV=dev` et `COOKIE_SECURE=false` sont fixés par `docker-compose.yml`
+Modèle : `.env.example`. En dev, `APP_ENV=dev` et `COOKIE_SECURE=false` sont fixés par `docker-compose.override.yml` (avec `PUBLIC_ORIGIN`, déduit de `FRONTEND_PORT`, et un cookie `localpdf-session` : les navigateurs ne séparent pas les cookies par port)
 (cookie `session` au lieu de `__Host-session`, endpoints `http` acceptés).
 
 ### 4. Lancer
 
 ```bash
-make up-build      # première fois, ou après un changement de dépendances / Dockerfile
-make up            # ensuite
+make dev          # premier plan (Ctrl+C pour arrêter), reconstruit les images
+make up           # en arrière-plan
 make logs          # suivre les journaux
 make urls          # rappelle l'URL et les paramètres OAuth de dev
 ```
@@ -102,7 +102,7 @@ Ouvrir <http://localhost:3010> : redirection vers le serveur OAuth, connexion, r
 | `make console c="app:application:test-backchannel-logout localpdf-dev moi@example.com"` (dans `OAuth-serveur`) | « HTTP 200 », session fermée aussitôt |
 | `make revoke email=…` (dans `OAuth-serveur`) | Session fermée au plus tard après `SESSION_REVALIDATE_INTERVAL` |
 | `POST` d'un gros fichier sans session | 401 immédiat |
-| Bouton de déconnexion (en-tête) | Session de l'application supprimée. Tant que le serveur OAuth ne publie pas d'`end_session_endpoint`, sa propre session reste ouverte : la page suivante reconnecte sans mot de passe |
+| Bouton de déconnexion (en-tête) | Déconnexion globale : session de l'app et session SSO fermées (`{OAUTH_ISSUER}/logout?redirect_uri=…`), retour sur l'écran de connexion du serveur OAuth |
 
 ## Premier déploiement (production)
 
@@ -127,8 +127,8 @@ L'application doit avoir pour redirect URI `https://pdf.mydomain.com/auth/callba
 
 ```bash
 git clone <url-du-depot> /opt/localpdf && cd /opt/localpdf
-cp .env.prod.example .env.prod && chmod 600 .env.prod
-$EDITOR .env.prod       # PUBLIC_ORIGIN, OAUTH_ISSUER, OAUTH_CLIENT_ID, OAUTH_CLIENT_SECRET
+cp .env.example .env && chmod 600 .env
+$EDITOR .env       # PUBLIC_ORIGIN, OAUTH_ISSUER, OAUTH_CLIENT_ID, OAUTH_CLIENT_SECRET
 ```
 
 `OAUTH_ISSUER` = valeur exacte du champ `issuer` de `https://oauth.mydomain.com/.well-known/oauth-authorization-server`
@@ -143,7 +143,7 @@ make prod-ps
 make prod-health    # app : HTTP 302 attendu (redirection vers la connexion), api /api/health : 200
 ```
 
-Le conteneur `web` (Caddy) écoute sur `127.0.0.1:${FRONTEND_PORT}` (3010 par défaut) uniquement. Le conteneur `api`
+Le conteneur `web` (Caddy) écoute sur `127.0.0.1:${REMOTE_FRONTEND_PORT}` (3010 par défaut) uniquement. Le conteneur `api`
 ne publie aucun port. `/api/health` répond 503 tant que le serveur OAuth n'a pas pu être lu ; `web` attend que `api`
 soit sain.
 
@@ -192,13 +192,13 @@ make prod-health
 ```
 
 Les jobs en cours (fichiers temporaires, TTL 30 min) sont perdus au redémarrage ; les sessions utilisateurs (volume
-`api-data`) sont conservées. À conserver lors d'une sauvegarde : `.env.prod` et le volume `api-data`.
+`api-data`) sont conservées. À conserver lors d'une sauvegarde : `.env` et le volume `api-data`.
 
 ## Commandes `make`
 
 | Commande | Rôle |
 |---|---|
-| `make up` / `make up-build` | Dev : démarre (avec reconstruction) et affiche les URL |
+| `make dev` / `make up` | Dev : démarre (avec reconstruction), au premier plan / en arrière-plan ; `up` affiche les URL |
 | `make down`, `make logs`, `make urls` | Dev : arrêt, journaux, URL et paramètres OAuth |
 | `make test`, `make lint` | Tests et linters (backend + frontend) |
 | `make prod-build` | Construit les images de production |

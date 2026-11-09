@@ -64,11 +64,11 @@ git clone <url-du-depot> /opt/localpdf
 cd /opt/localpdf
 ```
 
-### 3. Configurer `.env.prod`
+### 3. Configurer `.env`
 
 ```bash
-cp .env.prod.example .env.prod && chmod 600 .env.prod
-$EDITOR .env.prod
+cp .env.example .env && chmod 600 .env
+$EDITOR .env
 ```
 
 | Variable | Valeur |
@@ -77,10 +77,10 @@ $EDITOR .env.prod
 | `OAUTH_ISSUER` | la valeur exacte du champ `issuer` relevée à l'étape 0 |
 | `OAUTH_CLIENT_ID` | `localpdf` |
 | `OAUTH_CLIENT_SECRET` | le secret noté à l'étape 1 |
-| `FRONTEND_PORT` | `3010` (port local lié à `127.0.0.1`) |
+| `REMOTE_FRONTEND_PORT` | `3010` (port local lié à `127.0.0.1`) |
 | `MAX_UPLOAD_MB` | `200` |
 
-`.env.prod` n'est jamais commité et ne quitte pas le serveur (la CI ne le voit pas).
+`.env` n'est jamais commité et ne quitte pas le serveur (la CI ne le voit pas).
 
 ### 4. Construire et démarrer
 
@@ -134,7 +134,7 @@ sudo -u caddy caddy validate --config /etc/caddy/Caddyfile && sudo systemctl rel
 
 ### 7. Sauvegardes
 
-`make prod-backup` copie `.env.prod` et la base des sessions dans `./backups` (variable `BACKUP_DIR`, 30 jours de
+`make prod-backup` copie `.env` et la base des sessions dans `./backups` (variable `BACKUP_DIR`, 30 jours de
 rétention). Il est lancé automatiquement par `make prod-deploy`. Pour une sauvegarde planifiée en plus :
 
 ```bash
@@ -142,7 +142,7 @@ rétention). Il est lancé automatiquement par `make prod-deploy`. Pour une sauv
 0 3 * * * cd /opt/localpdf && make prod-backup BACKUP_DIR=/var/backups/localpdf >> /var/log/localpdf-backup.log 2>&1
 ```
 
-Ce qui compte : `.env.prod` (indispensable, contient le secret OAuth). La base des sessions est facultative : sans
+Ce qui compte : `.env` (indispensable, contient le secret OAuth). La base des sessions est facultative : sans
 elle, les utilisateurs doivent simplement se reconnecter. Les fichiers de travail (`/tmp/localpdf`) sont éphémères.
 
 Restauration des sessions (optionnelle) :
@@ -199,7 +199,7 @@ voulez que la production se mette à jour sans vous connecter. Il y a deux modè
 ### Modèle « pull » : aucun secret chez GitHub (recommandé si vous le voulez)
 
 Le serveur vérifie lui-même `main` toutes les 5 minutes et lance `make prod-deploy` uniquement si le commit a changé
-**et** que ses checks GitHub sont tous verts. GitHub ne connaît ni clé, ni mot de passe, ni `.env.prod`.
+**et** que ses checks GitHub sont tous verts. GitHub ne connaît ni clé, ni mot de passe, ni `.env`.
 
 Script root `/usr/local/sbin/pull-deploy-localpdf` (0755) :
 

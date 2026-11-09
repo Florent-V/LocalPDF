@@ -1,27 +1,17 @@
-FROM node:22-alpine
-
+FROM node:22-slim AS build
 WORKDIR /app
-
-COPY package.json pnpm-lock.yaml ./
-RUN npm install -g pnpm@11.17.0 \
-    && pnpm install --frozen-lockfile --ignore-scripts && pnpm exec nuxt prepare
-
+RUN corepack enable && corepack prepare pnpm@11.17.0 --activate
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
 COPY . .
+RUN pnpm run generate
 
-RUN chown -R node:node /app
-USER node
-
-EXPOSE 3000
-
-# pnpm's default "verify deps before run" behavior spawns an internal
-# `pnpm install` subprocess whenever it suspects node_modules might be
-# stale relative to the lockfile — which it always does on a fresh
-# container, since the build-time install happens in a different
-# environment than the runtime one. That subprocess crashes under this
-# non-root Alpine setup ("attempt to write a readonly database" opening
-# its SQLite store index, even though file permissions are correct).
-# `--config.verify-deps-before-run=warn` keeps the (harmless) check but
-# only logs instead of re-installing. A project .npmrc with the same
-# setting was tried first but isn't picked up in this run context, so
-# it's passed as an explicit CLI flag instead.
-CMD ["pnpm", "--config.verify-deps-before-run=warn", "dev"]
+# Static files only: no Node at runtime. The dev stack stops at the `build` stage.
+FROM caddy:2-alpine
+COPY Caddyfile /etc/caddy/Caddyfile
+COPY --from=build /app/.output/public /srv
+# Unprivileged: port 8080, Caddy's state in /tmp
+ENV XDG_DATA_HOME=/tmp XDG_CONFIG_HOME=/tmp
+USER 10001:10001
+EXPOSE 8080
+CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]

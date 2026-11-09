@@ -216,3 +216,11 @@ def test_markdown_to_pdf_blocks_external_resource_fetch(tmp_path):
     assert hit_count["value"] == 0
     assert output.exists()
     assert output.read_bytes().startswith(b"%PDF")
+
+
+def test_markdown_to_pdf_text_between_1mb_and_2mb_accepted():
+    # Starlette caps text form fields at 1 MB by default; the route raises it.
+    text = "# Title\n\n" + ("a" * (1536 * 1024))
+    response = client.post("/api/v1/convert/markdown-to-pdf", data={"text": text})
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"

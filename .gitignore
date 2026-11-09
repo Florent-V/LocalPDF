@@ -25,6 +25,6 @@ tmp/
 .idea/
 .pnpm-store/
 .env.prod
-
+.claude
 # Production backups (make prod-backup)
 backups/

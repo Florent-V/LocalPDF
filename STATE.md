@@ -9,7 +9,7 @@ données ne quittent son ordinateur.
 ## Règles architecturales
 
 1. **Frontend** : Nuxt 3 (Vue 3) + Nuxt UI + TailwindCSS.
-2. **Backend** : Python 3.11+ / FastAPI.
+2. **Backend** : Python 3.12+ / FastAPI.
 3. **Persistance** : fichiers traités en mémoire ou en dossier temporaire (UUID par
    job), purge TTL 30 min. Seul état durable : les sessions OAuth (SQLite, `/data`).
 4. **Déploiement** : 100% Docker via `docker-compose`.
@@ -34,7 +34,7 @@ Toutes les fonctionnalités prévues sont implémentées et validées :
 ## Authentification
 
 Le backend FastAPI est le client OAuth (BFF), module `backend/app/auth/` (spec
-`02-APPS-PYTHON-CLIENT-OAUTH.md`, version `AUTH_MODULE_VERSION`). Front statique
+`docs/authentification.md`, version `AUTH_MODULE_VERSION`). Front statique
 (`nuxt generate`, `ssr: false`) servi par Caddy ; session côté serveur (SQLite),
 cookie opaque. Voir `docs/deploiement.md`.
 
@@ -43,13 +43,13 @@ cookie opaque. Voir `docs/deploiement.md`.
 ```
 pdf-tools/
 ├── .env.example                     # template config ports/environnement
-├── Makefile                         # up (sans rebuild) / up-build (avec rebuild)
+├── Makefile                         # dev (make dev/up), prod (make prod-*) : identique à ImageConverter
 ├── docker-compose.yml                # variables via .env, limite mémoire backend 2G
 ├── README.md
 ├── STATE.md
 ├── backend/
-│   ├── Dockerfile                    # python:3.11-slim + LibreOffice + fontconfig
-│   ├── requirements.txt
+│   ├── Dockerfile                    # python:3.12-slim + LibreOffice + fontconfig
+│   ├── pyproject.toml, uv.lock       # deps (uv)
 │   └── app/
 │       ├── main.py                   # routers organize/modify/security/forms/convert/ai
 │       ├── core/{config,exceptions,tempfiles}.py
@@ -83,7 +83,7 @@ pdf-tools/
 ## Ports
 
 - Backend : `8010` en dev (`BACKEND_PORT`, réseau `host`) ; `8000` dans le conteneur de prod, non publié
-- Frontend : `3010` en dev (`FRONTEND_PORT`) ; en prod Caddy sur `127.0.0.1:${FRONTEND_PORT}`
+- Frontend : `3010` en dev (`FRONTEND_PORT`) ; en prod Caddy sur `127.0.0.1:${REMOTE_FRONTEND_PORT}`
 
 ## Conventions
 

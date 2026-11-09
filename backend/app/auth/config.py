@@ -21,6 +21,8 @@ class AuthSettings(BaseSettings):
     session_absolute_ttl: int = 7 * 86400
     session_revalidate_interval: int = 15 * 60
     cookie_secure: bool = True
+    # Plain-HTTP dev only: browsers share cookies across localhost ports, so each app needs its own name.
+    session_cookie_name: str = ""
     app_env: Literal["prod", "dev"] = "prod"
     # Only for a server that signs its logout tokens in HS256 and publishes no jwks_uri.
     oauth_logout_token_secret: str = ""
@@ -50,4 +52,4 @@ class AuthSettings(BaseSettings):
     def cookie_name(self) -> str:
         # The __Host- prefix makes browsers refuse a cookie that is not Secure,
         # host-only and Path=/, which also blocks a sibling subdomain from setting it.
-        return "__Host-session" if self.cookie_secure else "session"
+        return "__Host-session" if self.cookie_secure else (self.session_cookie_name or "session")

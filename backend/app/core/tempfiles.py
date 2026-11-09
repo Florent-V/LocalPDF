@@ -1,12 +1,12 @@
 import asyncio
 import shutil
 import uuid
+from collections.abc import Callable
 from contextlib import contextmanager
 from contextvars import ContextVar
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from threading import Lock
-from typing import Callable
 
 from fastapi import UploadFile
 from pypdf import PdfReader
@@ -31,8 +31,8 @@ def create_job_dir() -> Path:
         _job_registry[job_id] = {
             "path": str(path),
             "owner": current_owner.get(),
-            "created_at": datetime.now(timezone.utc),
-            "last_access": datetime.now(timezone.utc),
+            "created_at": datetime.now(UTC),
+            "last_access": datetime.now(UTC),
         }
     return path
 
@@ -42,7 +42,7 @@ def get_job_dir(job_id: str) -> Path | None:
         job = _job_registry.get(job_id)
         if not job or job["owner"] != current_owner.get():
             return None
-        job["last_access"] = datetime.now(timezone.utc)
+        job["last_access"] = datetime.now(UTC)
     return Path(job["path"])
 
 
@@ -52,8 +52,8 @@ def register_job(path: Path) -> str:
         _job_registry[job_id] = {
             "path": str(path),
             "owner": current_owner.get(),
-            "created_at": datetime.now(timezone.utc),
-            "last_access": datetime.now(timezone.utc),
+            "created_at": datetime.now(UTC),
+            "last_access": datetime.now(UTC),
         }
     return job_id
 
@@ -74,7 +74,7 @@ def _purge_job(job_id: str) -> None:
 
 
 def _cleanup_expired():
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     ttl = timedelta(minutes=settings.temp_ttl_minutes)
     expired = []
     with _registry_lock:

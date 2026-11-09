@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import shutil
 import subprocess
@@ -83,10 +84,9 @@ def office_to_pdf(file: BinaryIO, output_dir: Path, original_name: str) -> Path:
         str(input_path),
     ]
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603 (fixed argv, no shell)
             cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             timeout=120,
             check=False,
         )
@@ -95,10 +95,8 @@ def office_to_pdf(file: BinaryIO, output_dir: Path, original_name: str) -> Path:
             status_code=504, detail="La conversion Office a dépassé le délai."
         ) from exc
     finally:
-        try:
+        with contextlib.suppress(Exception):
             input_path.unlink(missing_ok=True)
-        except Exception:
-            pass
 
     if result.returncode != 0:
         logger.warning(
