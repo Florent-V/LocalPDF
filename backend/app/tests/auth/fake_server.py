@@ -5,7 +5,7 @@ import json
 import time
 from urllib.parse import parse_qs
 
-import httpx
+import httpx2
 import jwt
 from cryptography.hazmat.primitives.asymmetric import rsa
 
@@ -21,7 +21,7 @@ def new_key():
 
 class FakeOAuthServer:
     """An OAuth server in memory: discovery document, JWKS, /token (code +
-    PKCE, refresh with rotation) and /userinfo, behind an httpx transport."""
+    PKCE, refresh with rotation) and /userinfo, behind an httpx2 transport."""
 
     def __init__(self):
         self.key = new_key()
@@ -85,26 +85,26 @@ class FakeOAuthServer:
 
     @staticmethod
     def _error(status, error):
-        return httpx.Response(status, json={"error": error})
+        return httpx2.Response(status, json={"error": error})
 
-    async def handle(self, request: httpx.Request) -> httpx.Response:
+    async def handle(self, request: httpx2.Request) -> httpx2.Response:
         path = request.url.path
         if path.startswith("/.well-known/") and path.endswith("jwks.json"):
-            return httpx.Response(200, json=self.jwks())
+            return httpx2.Response(200, json=self.jwks())
         if path == self.well_known_path:
             self.discovery_calls += 1
             if self.refresh_mode == "down":
-                raise httpx.ConnectError("down")
-            return httpx.Response(200, json=self.metadata)
+                raise httpx2.ConnectError("down")
+            return httpx2.Response(200, json=self.metadata)
         if path.startswith("/.well-known/"):
-            return httpx.Response(404)
+            return httpx2.Response(404)
         if path == "/api/userinfo":
             if request.headers.get("authorization", "").startswith("Bearer at-"):
-                return httpx.Response(200, json=self.userinfo)
-            return httpx.Response(401)
+                return httpx2.Response(200, json=self.userinfo)
+            return httpx2.Response(401)
         if path == "/token":
             return await self._token_endpoint(request)
-        return httpx.Response(404)
+        return httpx2.Response(404)
 
     async def _token_endpoint(self, request):
         expected = base64.b64encode(f"{CLIENT_ID}:{CLIENT_SECRET}".encode()).decode()
@@ -117,17 +117,17 @@ class FakeOAuthServer:
             digest = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
             if challenge is None or challenge != digest:
                 return self._error(400, "invalid_grant")
-            return httpx.Response(200, json=self._token())
+            return httpx2.Response(200, json=self._token())
         if form["grant_type"] == "refresh_token":
             self.refresh_calls += 1
             if self.refresh_delay:
                 await asyncio.sleep(self.refresh_delay)
             if self.refresh_mode == "down":
-                raise httpx.ConnectError("down")
+                raise httpx2.ConnectError("down")
             if self.refresh_mode == "unavailable":
                 return self._error(503, "temporarily_unavailable")
             if self.refresh_mode == "invalid_grant" or form["refresh_token"] not in self.refresh_tokens:
                 return self._error(400, "invalid_grant")
             self.refresh_tokens.discard(form["refresh_token"])  # single use
-            return httpx.Response(200, json=self._token())
+            return httpx2.Response(200, json=self._token())
         return self._error(400, "unsupported_grant_type")

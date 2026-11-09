@@ -3,7 +3,7 @@ import re
 import secrets
 from urllib.parse import urlencode
 
-import httpx
+import httpx2
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from starlette.requests import cookie_parser
@@ -89,7 +89,7 @@ async def callback(request: Request):
         claims = await _identity(ctx, token, attempt.nonce)
     except (InvalidGrant, InvalidToken):
         return _error(400, "invalid_grant")
-    except (TemporaryError, httpx.HTTPError) as exc:
+    except (TemporaryError, httpx2.HTTPError) as exc:
         log.warning("Login failed, OAuth server error: %s", exc)
         return _error(502, "oauth_server_error")
 

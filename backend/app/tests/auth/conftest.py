@@ -1,6 +1,6 @@
 from urllib.parse import parse_qs, urlparse
 
-import httpx
+import httpx2
 import jwt
 import pytest
 from fastapi import FastAPI
@@ -43,7 +43,7 @@ def build_app(server, settings):
     def build(**overrides):
         app = FastAPI()
         cfg = settings(**overrides)
-        ctx = setup_auth(app, cfg, ("/api",), ("/api/open",), transport=httpx.MockTransport(server.handle))
+        ctx = setup_auth(app, cfg, ("/api",), ("/api/open",), transport=httpx2.MockTransport(server.handle))
 
         @app.get("/api/open")
         async def open_route():
@@ -62,11 +62,11 @@ def build_app(server, settings):
     return build
 
 
-def client_for(app) -> httpx.AsyncClient:
-    return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url=ORIGIN)
+def client_for(app) -> httpx2.AsyncClient:
+    return httpx2.AsyncClient(transport=httpx2.ASGITransport(app=app), base_url=ORIGIN)
 
 
-async def login(client: httpx.AsyncClient, server: FakeOAuthServer, return_to: str = "/") -> httpx.Response:
+async def login(client: httpx2.AsyncClient, server: FakeOAuthServer, return_to: str = "/") -> httpx2.Response:
     """The whole browser flow: /auth/login, the OAuth server's authorization, /auth/callback."""
     response = await client.get("/auth/login", params={"return_to": return_to})
     assert response.status_code == 302, response.text

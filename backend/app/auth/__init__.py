@@ -4,7 +4,7 @@ import logging
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 
-import httpx
+import httpx2
 from fastapi import FastAPI
 
 from app.auth.client import OAuthClient
@@ -45,7 +45,7 @@ def setup_auth(
     settings: AuthSettings,
     protected_prefixes: tuple[str, ...],
     public_paths: tuple[str, ...] = (),
-    transport: httpx.AsyncBaseTransport | None = None,
+    transport: httpx2.AsyncBaseTransport | None = None,
 ) -> AuthContext:
     """Wires the OAuth client into a FastAPI app: /auth/* and /api/me routes,
     the session middleware and the startup (discovery, purge). Anything that
@@ -53,7 +53,7 @@ def setup_auth(
 
     `transport` replaces the network for the HTTP calls to the OAuth server
     (tests)."""
-    # Discovery is fetched by the same Authlib/httpx client as the tokens.
+    # Discovery is fetched by the same Authlib/httpx2 client as the tokens.
     discovery = Discovery(settings, http=None)  # type: ignore[arg-type]
     client = OAuthClient(settings, discovery, transport=transport)
     discovery.http = client.http

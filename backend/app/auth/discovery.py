@@ -2,7 +2,7 @@ import asyncio
 import logging
 from urllib.parse import urlsplit
 
-import httpx
+import httpx2
 
 from app.auth.config import AuthSettings
 
@@ -57,7 +57,7 @@ def validate(metadata: dict, settings: AuthSettings) -> None:
 class Discovery:
     """Metadata of the OAuth server, cached in memory and refreshed hourly."""
 
-    def __init__(self, settings: AuthSettings, http: httpx.AsyncClient):
+    def __init__(self, settings: AuthSettings, http: httpx2.AsyncClient):
         self.settings = settings
         self.http = http
         self.metadata: dict | None = None
@@ -74,7 +74,7 @@ class Discovery:
         for url in candidate_urls(self.settings.oauth_issuer):
             try:
                 response = await self.http.get(url, auth=None)
-            except httpx.HTTPError as exc:
+            except httpx2.HTTPError as exc:
                 raise DiscoveryUnavailable(f"{url}: {exc}") from exc
             if response.status_code == 404:
                 last = DiscoveryError(f"{url}: 404")

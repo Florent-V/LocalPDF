@@ -68,7 +68,7 @@ async def test_logout_uses_end_session_endpoint_and_revokes_the_token(build_app,
     async def handle(request):
         if request.url.path == "/revoke":
             revoked.append(request.content.decode())
-            return __import__("httpx").Response(200)
+            return __import__("httpx2").Response(200)
         return await original(request)
 
     server.handle = handle
@@ -82,14 +82,14 @@ async def test_logout_uses_end_session_endpoint_and_revokes_the_token(build_app,
 
 
 async def test_logout_succeeds_even_if_the_revocation_fails(build_app, server):
-    import httpx
+    import httpx2
 
     server.metadata["revocation_endpoint"] = "https://auth.test/revoke"
     original = server.handle
 
     async def handle(request):
         if request.url.path == "/revoke":
-            raise httpx.ConnectError("down")
+            raise httpx2.ConnectError("down")
         return await original(request)
 
     server.handle = handle
