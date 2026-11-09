@@ -4,3 +4,20 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # Wait a few days after a release before proposing it (supply-chain safety).
+    cooldown:
+      default-days: 7
+  - package-ecosystem: uv
+    directory: /backend
+    schedule:
+      interval: weekly
+    # Wait a few days after a release before proposing it (supply-chain safety).
+    cooldown:
+      default-days: 7
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    # Wait a few days after a release before proposing it (supply-chain safety).
+    cooldown:
+      default-days: 7

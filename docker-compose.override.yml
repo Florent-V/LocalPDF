@@ -1,0 +1,44 @@
+# Dev stack (`make dev`): http://localhost:FRONTEND_PORT, hot reload.
+# Loaded automatically on top of docker-compose.yml (not in production).
+services:
+  api:
+    image: localpdf-api:dev
+    command: uvicorn app.main:app --host 0.0.0.0 --port ${BACKEND_PORT:-8000} --reload
+    # Host network: the OAuth issuer is http://localhost:8080 and the backend
+    # must reach it under that exact name (the issuer is compared as a string).
+    network_mode: host
+    environment:
+      PUBLIC_ORIGIN: http://localhost:${FRONTEND_PORT:-3010}
+      APP_ENV: dev
+      COOKIE_SECURE: "false"
+      # Browsers don't isolate cookies by port: another app on localhost would clash
+      SESSION_COOKIE_NAME: localpdf-session
+      WEB_CONCURRENCY: "1"
+    volumes:
+      - ./backend/app:/app/app
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:${BACKEND_PORT:-8000}/api/health', timeout=3)"]
+
+  web:
+    image: localpdf-web:dev
+    build:
+      target: build
+    # Nuxt dev server; /api and /auth are proxied to the API (nitro.devProxy)
+    command: pnpm run dev --host 0.0.0.0 --port 3000
+    # The Nuxt dev server needs far more than the Caddy of production
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    environment:
+      BACKEND_URL: http://host.docker.internal:${BACKEND_PORT:-8000}
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.nuxt
+    ports:
+      - "${FRONTEND_PORT:-3010}:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      disable: true

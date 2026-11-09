@@ -63,7 +63,7 @@ En clair : si vous hébergez publiquement cette application, ne présentez pas �
 
 ```
 Frontend   Nuxt 3 · Nuxt UI · Tailwind CSS · pnpm
-Backend    FastAPI (Python 3.11+) · PyMuPDF · pypdf · pikepdf · pymupdf4llm
+Backend    FastAPI (Python 3.12+) · PyMuPDF · pypdf · pikepdf · pymupdf4llm
 Stockage   Aucune base de données — traitement en mémoire ou fichiers temporaires auto-purgés
 Infra      Docker + docker-compose · Makefile · GitHub Actions
 ```
@@ -86,9 +86,8 @@ make up
 **Backend**
 ```bash
 cd backend
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+uv sync
+uv run uvicorn app.main:app --reload
 ```
 
 **Frontend**

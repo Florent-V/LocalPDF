@@ -1,61 +1,81 @@
-# Local development. The Python API is the OAuth client (BFF); Nuxt only serves
-# the pages and proxies /api and /auth to it, so the browser sees one origin.
+# Base stack = production-like: built images, no source mounts, nothing published.
+#   - dev:  `make dev` also loads docker-compose.override.yml (hot reload)
+#   - prod: `make prod-up` adds docker-compose.prod.yml (web on 127.0.0.1)
+# Same layout, same service names (api, web) and same variables as the ImageConverter repo.
+name: localpdf
+
 services:
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: localpdf-backend
-    # Host network: the OAuth issuer is http://localhost:8080 and must be
-    # reachable under that very name from the API (discovery checks it strictly).
-    network_mode: host
+  api:
+    build: ./backend
+    image: localpdf-api:${IMAGE_TAG:-latest}
+    # Not published: reachable only through the web container (Caddy) and,
+    # for the back-channel logout, through the public URL.
+    expose:
+      - "8000"
     environment:
-      - MAX_UPLOAD_MB=${MAX_UPLOAD_MB:-200}
-      - OAUTH_ISSUER=${OAUTH_ISSUER:-http://localhost:8080}
-      - OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID}
-      - OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET}
-      - PUBLIC_ORIGIN=http://localhost:${FRONTEND_PORT:-3010}
-      - APP_ENV=dev
-      - COOKIE_SECURE=false
-      - SESSION_DB_PATH=/data/sessions.db
+      # App-specific
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-200}
+      # Common to every app
+      OAUTH_ISSUER: ${OAUTH_ISSUER}
+      OAUTH_CLIENT_ID: ${OAUTH_CLIENT_ID}
+      OAUTH_CLIENT_SECRET: ${OAUTH_CLIENT_SECRET}
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN}
+      APP_ENV: ${APP_ENV:-prod}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-}
+      SESSION_DB_PATH: /data/sessions.db
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
+      # The only way in is the web container: nothing else can forge these headers
+      # (to tighten later: see docs/ameliorations-a-prevoir.md)
+      FORWARDED_ALLOW_IPS: "*"
+    volumes:
+      # Sessions database: kept across restarts so sessions (and the replay
+      # protection of logout tokens) survive a redeploy
+      - api-data:/data
     deploy:
       resources:
         limits:
           memory: 2G
-    volumes:
-      - ./backend:/app
-      - backend-data:/data
-      - /app/__pycache__
-      - /app/.venv
-    command: uvicorn app.main:app --host 0.0.0.0 --port ${BACKEND_PORT:-8000} --reload
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      # 503 until the OAuth server metadata is loaded
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
     restart: unless-stopped
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: localpdf-frontend
-    ports:
-      - "${FRONTEND_PORT:-3010}:${FRONTEND_PORT:-3010}"
-    environment:
-      - BACKEND_URL=http://host.docker.internal:${BACKEND_PORT:-8000}
-      - NUXT_PORT=${FRONTEND_PORT:-3010}
-      - NUXT_HOST=0.0.0.0
-      - CI=true
+  web:
+    build: ./frontend
+    image: localpdf-web:${IMAGE_TAG:-latest}
     deploy:
       resources:
         limits:
-          memory: 2G
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.nuxt
-    command: pnpm --config.verify-deps-before-run=warn dev
-    restart: unless-stopped
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+          memory: 256M
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
     depends_on:
-      - backend
+      api:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
-  backend-data:
+  api-data:
