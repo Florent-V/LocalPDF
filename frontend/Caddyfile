@@ -8,6 +8,11 @@
 	encode zstd gzip
 
 	handle /auth/* {
+		# Auth endpoints only receive tiny bodies (e.g. a back-channel logout token);
+		# /auth/backchannel-logout is reachable without a session, so cap it hard
+		request_body {
+			max_size 1MB
+		}
 		reverse_proxy api:8000
 	}
 

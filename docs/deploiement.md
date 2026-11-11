@@ -157,17 +157,16 @@ pdf.mydomain.com {
 	import securite
 	import journal pdf
 
-	# Uploads de PDF volumineux (MAX_UPLOAD_MB) et conversions longues (LibreOffice)
+	# Première barrière sur tout le domaine, au-dessus de MAX_UPLOAD_MB et du 210MB du conteneur web
 	request_body {
 		max_size 250MB
 	}
-	reverse_proxy 127.0.0.1:3010 {
-		transport http {
-			response_header_timeout 300s
-		}
-	}
+	reverse_proxy 127.0.0.1:3010
 }
 ```
+
+Pas de `response_header_timeout` : Caddy n'en a pas par défaut, une conversion longue passe. Le détail des limites de
+taille est dans [mise-en-production.md](mise-en-production.md), étape 5.
 
 ```bash
 sudo -u caddy caddy validate --config /etc/caddy/Caddyfile && sudo systemctl reload caddy

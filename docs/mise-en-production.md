@@ -104,21 +104,27 @@ pdf.mydomain.com {
 	import securite
 	import journal pdf
 
-	# Uploads de PDF (MAX_UPLOAD_MB) et conversions longues (LibreOffice)
+	# Première barrière sur tout le domaine (/auth/* compris), au-dessus de MAX_UPLOAD_MB
 	request_body {
 		max_size 250MB
 	}
-	reverse_proxy 127.0.0.1:3010 {
-		transport http {
-			response_header_timeout 300s
-		}
-	}
+	reverse_proxy 127.0.0.1:3010
 }
 ```
 
 ```bash
 sudo -u caddy caddy validate --config /etc/caddy/Caddyfile && sudo systemctl reload caddy
 ```
+
+Notes :
+- `securite` et `journal` sont des snippets à définir une seule fois dans `/etc/caddy/Caddyfile` (voir le fichier
+  cité ci-dessus). `securite` pose notamment le HSTS, que le conteneur `web` laisse volontairement à ce Caddy.
+- Pas de `response_header_timeout` : Caddy n'a aucun timeout de réponse par défaut, donc une conversion LibreOffice
+  longue passe. N'ajoutez `transport http { response_header_timeout 300s }` que si vos requêtes sont coupées (ce
+  qui ne peut venir que d'un timeout défini dans votre Caddyfile global).
+- Limites de taille, de l'extérieur vers l'intérieur : 250 Mo ici, 210 Mo sur `/api/*` et 1 Mo sur `/auth/*` dans le
+  conteneur `web` (`frontend/Caddyfile`), puis `MAX_UPLOAD_MB` (200 par défaut) dans l'API. Si vous relevez
+  `MAX_UPLOAD_MB`, relevez aussi le `210MB` de `frontend/Caddyfile` (environ 10 Mo de plus) et la limite ci-dessus.
 
 ### 6. Recette de la production
 
