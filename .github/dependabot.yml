@@ -1,23 +1,79 @@
 version: 2
 updates:
-  - package-ecosystem: github-actions
-    directory: /
+  - package-ecosystem: "github-actions"
+    directory: "/"
     schedule:
-      interval: weekly
-    # Wait a few days after a release before proposing it (supply-chain safety).
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    # Skip fresh releases (supply-chain safety); security updates ignore cooldown.
     cooldown:
       default-days: 7
-  - package-ecosystem: uv
-    directory: /backend
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+      major:
+        update-types: ["major"]
+    commit-message:
+      prefix: "chore(deps)"
+  - package-ecosystem: "uv"
+    directory: "/backend"
     schedule:
-      interval: weekly
-    # Wait a few days after a release before proposing it (supply-chain safety).
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    # Skip fresh releases (supply-chain safety); security updates ignore cooldown.
     cooldown:
       default-days: 7
-  - package-ecosystem: npm
-    directory: /frontend
+      semver-major-days: 30
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+      major:
+        update-types: ["major"]
+    commit-message:
+      prefix: "chore(deps)"
+  - package-ecosystem: "npm"
+    directory: "/frontend"
     schedule:
-      interval: weekly
-    # Wait a few days after a release before proposing it (supply-chain safety).
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    # Skip fresh releases (supply-chain safety); security updates ignore cooldown.
     cooldown:
       default-days: 7
+      semver-major-days: 30
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+      major:
+        update-types: ["major"]
+    commit-message:
+      prefix: "chore(deps)"
+  - package-ecosystem: "docker"
+    directory: "/backend"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    # Skip fresh releases (supply-chain safety); security updates ignore cooldown.
+    cooldown:
+      default-days: 7
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+      major:
+        update-types: ["major"]
+    commit-message:
+      prefix: "chore(deps)"
+  - package-ecosystem: "docker"
+    directory: "/frontend"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    # Skip fresh releases (supply-chain safety); security updates ignore cooldown.
+    cooldown:
+      default-days: 7
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+      major:
+        update-types: ["major"]
+    commit-message:
+      prefix: "chore(deps)"
