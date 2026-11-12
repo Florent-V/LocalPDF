@@ -3,11 +3,9 @@ from typing import BinaryIO
 
 import pymupdf4llm
 
-from app.services.ai.providers.anthropic_provider import AnthropicProvider
 from app.services.ai.providers.base import AIProvider
 from app.services.ai.providers.ollama_provider import OllamaProvider
 from app.services.ai.providers.openai_provider import OpenAIProvider
-from app.services.ai.providers.openrouter_provider import OpenRouterProvider
 
 
 def _require_api_key(config: dict, provider: str) -> str:
@@ -24,33 +22,30 @@ def _build_ollama(config: dict) -> AIProvider:
     )
 
 
-def _build_openai(config: dict) -> AIProvider:
-    return OpenAIProvider(
-        api_key=_require_api_key(config, "openai"),
-        model=config.get("model", "gpt-4o-mini"),
-    )
+def _openai_compatible(name: str, label: str, default_model: str, default_base_url: str | None):
+    """Factory for providers speaking the OpenAI chat-completions protocol."""
 
+    def build(config: dict) -> AIProvider:
+        return OpenAIProvider(
+            api_key=_require_api_key(config, name),
+            model=config.get("model", default_model),
+            base_url=config.get("base_url") or default_base_url,
+            label=label,
+        )
 
-def _build_anthropic(config: dict) -> AIProvider:
-    return AnthropicProvider(
-        api_key=_require_api_key(config, "anthropic"),
-        model=config.get("model", "claude-3-5-sonnet-20241022"),
-    )
-
-
-def _build_openrouter(config: dict) -> AIProvider:
-    return OpenRouterProvider(
-        api_key=_require_api_key(config, "openrouter"),
-        model=config.get("model", "openai/gpt-4o-mini"),
-        base_url=config.get("base_url") or None,
-    )
+    return build
 
 
 _PROVIDER_FACTORIES: dict[str, Callable[[dict], AIProvider]] = {
     "ollama": _build_ollama,
-    "openai": _build_openai,
-    "anthropic": _build_anthropic,
-    "openrouter": _build_openrouter,
+    "openai": _openai_compatible("openai", "OpenAI", "gpt-4o-mini", None),
+    # Anthropic exposes an OpenAI-compatible endpoint.
+    "anthropic": _openai_compatible(
+        "anthropic", "Anthropic", "claude-sonnet-4-5", "https://api.anthropic.com/v1/"
+    ),
+    "openrouter": _openai_compatible(
+        "openrouter", "OpenRouter", "openai/gpt-4o-mini", "https://openrouter.ai/api/v1"
+    ),
 }
 
 

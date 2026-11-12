@@ -103,7 +103,7 @@ pdf-tools/
 - Librairies PDF : PyMuPDF 1.24.13, pypdf 5.1.0, pikepdf 9.4.0.
 - Conversion : Pillow, pdf2docx 0.5.8, LibreOffice headless, xhtml2pdf
   (markdown→PDF, avec `link_callback` bloquant réseau/fichiers locaux).
-- IA : pymupdf4llm, ollama, openai, anthropic ; architecture provider modulaire.
+- IA : pymupdf4llm, ollama, openai (SDK unique, compatible OpenAI : OpenAI/Anthropic/OpenRouter/...) ; architecture provider modulaire.
 - Tests : 20 passés (dont 8 sur `convert.py`, incluant 2 tests sécurité/DoS
   markdown→PDF).
 
