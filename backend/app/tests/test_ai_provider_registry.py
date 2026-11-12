@@ -1,6 +1,5 @@
 import pytest
 
-from app.services.ai.providers.anthropic_provider import AnthropicProvider
 from app.services.ai.providers.ollama_provider import OllamaProvider
 from app.services.ai.providers.openai_provider import OpenAIProvider
 from app.services.ai.service import get_provider
@@ -19,7 +18,15 @@ def test_get_provider_returns_openai():
 
 def test_get_provider_returns_anthropic():
     provider = get_provider("anthropic", {"api_key": "sk-test"})
-    assert isinstance(provider, AnthropicProvider)
+    assert isinstance(provider, OpenAIProvider)
+    assert str(provider.client.base_url) == "https://api.anthropic.com/v1/"
+
+
+def test_get_provider_openrouter_and_custom_base_url():
+    default = get_provider("openrouter", {"api_key": "k"})
+    assert str(default.client.base_url) == "https://openrouter.ai/api/v1/"
+    custom = get_provider("openai", {"api_key": "k", "base_url": "http://vllm:8000/v1"})
+    assert str(custom.client.base_url) == "http://vllm:8000/v1/"
 
 
 def test_get_provider_rejects_unknown_provider():

@@ -9,7 +9,7 @@ const model = ref('llama3.1:8b')
 const presets = {
   ollama: { baseUrl: 'http://localhost:11434', model: 'llama3.1:8b' },
   openai: { baseUrl: '', model: 'gpt-4o-mini' },
-  anthropic: { baseUrl: '', model: 'claude-3-5-sonnet-20241022' },
+  anthropic: { baseUrl: '', model: 'claude-sonnet-4-5' },
   openrouter: { baseUrl: '', model: 'openai/gpt-4o-mini' }
 }
 
@@ -79,12 +79,12 @@ function saveConfig() {
       </UFormField>
 
       <UFormField
-        v-if="provider === 'openrouter'"
+        v-if="provider !== 'ollama'"
         label="URL de base (optionnel)"
       >
         <UInput
           v-model="baseUrl"
-          placeholder="https://openrouter.ai/api/v1"
+          placeholder="Laisser vide pour l'URL par défaut du provider (toute API compatible OpenAI)"
         />
       </UFormField>
 
