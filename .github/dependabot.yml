@@ -70,6 +70,10 @@ updates:
     # Skip fresh releases (supply-chain safety); security updates ignore cooldown.
     cooldown:
       default-days: 7
+    # Stay on the Node LTS line: majors are bumped manually when the next LTS ships.
+    ignore:
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
     groups:
       minor-and-patch:
         update-types: ["minor", "patch"]
