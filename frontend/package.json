@@ -14,17 +14,17 @@
     "audit": "pnpm audit --audit-level=high"
   },
   "dependencies": {
-    "@iconify-json/lucide": "^1.2.151",
-    "@iconify-json/simple-icons": "^1.2.101",
+    "@iconify-json/lucide": "^1.2.155",
+    "@iconify-json/simple-icons": "^1.2.102",
     "@nuxt/ui": "^4.12.0",
     "nuxt": "^4.6.4",
     "pdfjs-dist": "^6.5.438",
-    "tailwindcss": "^4.3.4"
+    "tailwindcss": "^4.3.5"
   },
   "devDependencies": {
     "@nuxt/eslint": "^1.17.0",
-    "@nuxt/test-utils": "^4.3.4",
-    "eslint": "^10.14.0",
+    "@nuxt/test-utils": "^4.4.0",
+    "eslint": "^10.15.0",
     "happy-dom": "^21.0.4",
     "jsdom": "^30.1.3",
     "typescript": "^6.0.3",
