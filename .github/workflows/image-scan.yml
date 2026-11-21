@@ -1,0 +1,51 @@
+name: Image scan
+
+# Trivy scan of the built images (OS packages + binaries), free and OSS.
+# Runs weekly: new CVEs appear in base images without any change in the repo.
+on:
+  push:
+    branches: [main]
+    paths:
+      - backend/Dockerfile
+      - frontend/Dockerfile
+      - .github/workflows/image-scan.yml
+  pull_request:
+    paths:
+      - backend/Dockerfile
+      - frontend/Dockerfile
+      - .github/workflows/image-scan.yml
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    name: Scan ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: backend
+            context: ./backend
+          - name: frontend
+            context: ./frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build image
+        run: docker build --pull -t scan-${{ matrix.name }}:ci ${{ matrix.context }}
+      - name: Trivy (fails on fixable high and critical)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: scan-${{ matrix.name }}:ci
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          vuln-type: os,library
+          exit-code: '1'
+          trivyignores: .trivyignore
