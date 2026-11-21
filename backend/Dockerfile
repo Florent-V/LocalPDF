@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.12.16-slim-trixie@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -9,8 +9,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 COPY --from=ghcr.io/astral-sh/uv:0.10.5 /uv /usr/local/bin/uv
 
-# System libraries: the only app-specific block of this file
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# System libraries: the only app-specific block of this file.
+# `apt-get upgrade` picks up Debian security fixes newer than the pinned base image.
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     gcc \
     libffi-dev \
     libmagic1 \

@@ -1,0 +1,4 @@
+# Accepted findings: remove each line once the base image ships the fix.
+# caddy 2.11.9 (latest) bundles golang.org/x/net 0.60.0; fix is in 0.62.0.
+# Caddy does not parse untrusted HTML, so the html DoS is not reachable.
+CVE-2026-78661

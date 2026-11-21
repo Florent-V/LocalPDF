@@ -50,7 +50,7 @@ updates:
   - package-ecosystem: "docker"
     directory: "/backend"
     schedule:
-      interval: "monthly"
+      interval: "weekly"
     open-pull-requests-limit: 3
     # Skip fresh releases (supply-chain safety); security updates ignore cooldown.
     cooldown:
@@ -65,7 +65,7 @@ updates:
   - package-ecosystem: "docker"
     directory: "/frontend"
     schedule:
-      interval: "monthly"
+      interval: "weekly"
     open-pull-requests-limit: 3
     # Skip fresh releases (supply-chain safety); security updates ignore cooldown.
     cooldown:
